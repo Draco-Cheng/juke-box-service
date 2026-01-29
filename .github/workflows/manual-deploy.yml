@@ -1,0 +1,170 @@
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Docker image version (e.g., v0.4.16). Use "latest" to auto-detect the most recent semantic version tag.'
+        required: true
+        default: 'latest'
+        type: string
+      apps:
+        description: 'Apps to deploy (comma-separated: backend,frontend or "all")'
+        required: true
+        default: 'all'
+        type: string
+      clean_namespace:
+        description: 'Clean namespace before deployment (delete and recreate)'
+        required: false
+        default: false
+        type: boolean
+      reason:
+        description: 'Reason for manual deployment'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: manual-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # === Docker settings ===
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+      # === Kubernetes ===
+      K8S_NAMESPACE: mono-repo-skeleton
+      K8S_CA_DATA: ${{ secrets.K8S_CA_DATA }}
+      K8S_CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT }}
+      K8S_CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY }}
+      K8S_SERVER: ${{ secrets.K8S_SERVER }}
+
+      # === Deployment settings ===
+      VERSION: ${{ inputs.version }}
+      REPO_NAME: ${{ github.event.repository.name }}
+      DEPLOY_APPS: ${{ inputs.apps }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine version to deploy
+        id: determine-version
+        run: |
+          INPUT_VERSION="${{ inputs.version }}"
+
+          if [ "$INPUT_VERSION" = "latest" ]; then
+            # Auto-detect latest semantic version
+            LATEST_VERSION=$(git tag -l 'v*.*.*' | sort -V | tail -1)
+            if [ -z "$LATEST_VERSION" ]; then
+              echo "❌ No semantic version tags found. Please create a version first."
+              exit 1
+            fi
+            echo "✅ Auto-detected latest version: $LATEST_VERSION"
+            echo "VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+          else
+            # Use specified version
+            echo "✅ Using specified version: $INPUT_VERSION"
+            echo "VERSION=$INPUT_VERSION" >> $GITHUB_ENV
+          fi
+
+      - name: Display deployment info
+        run: |
+          echo "========================================="
+          echo "🚀 Manual Deployment Information"
+          echo "========================================="
+          echo "Requested Version: ${{ inputs.version }}"
+          echo "Deploying Version: ${VERSION}"
+          echo "Apps: ${DEPLOY_APPS}"
+          echo "Clean Namespace: ${{ inputs.clean_namespace }}"
+          echo "Reason: ${{ inputs.reason || 'Not specified' }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "========================================="
+
+      # Setup kubectl and Helm
+      - name: Setup kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Setup Kubernetes environment
+        run: bash .github/scripts/setup-k8s.sh
+
+      # Clean namespace if requested (fresh start)
+      - name: Clean namespace
+        if: inputs.clean_namespace == true
+        run: |
+          echo "🧹 Cleaning namespace ${K8S_NAMESPACE} for fresh deployment..."
+          if kubectl get namespace ${K8S_NAMESPACE} &> /dev/null; then
+            echo "Deleting existing namespace..."
+            kubectl delete namespace ${K8S_NAMESPACE}
+            echo "Waiting for namespace deletion to complete..."
+            kubectl wait --for=delete namespace/${K8S_NAMESPACE} --timeout=60s || true
+          fi
+          echo "Creating fresh namespace..."
+          kubectl create namespace ${K8S_NAMESPACE}
+          echo "✅ Namespace ready for deployment"
+
+      # Deploy infrastructure components
+      - name: Deploy infrastructure components
+        run: bash .github/scripts/deploy-infra.sh
+
+      # Deploy selected apps using nx
+      - name: Deploy apps
+        run: |
+          # Parse apps input and deploy using nx
+          APPS="${DEPLOY_APPS}"
+
+          if [ "$APPS" = "all" ]; then
+            echo "Deploying all apps..."
+            npx nx run-many -t deploy --all
+          else
+            echo "Deploying selected apps: $APPS"
+            # Convert comma-separated list to nx project names
+            IFS=',' read -ra APP_ARRAY <<< "$APPS"
+            for app in "${APP_ARRAY[@]}"; do
+              app=$(echo "$app" | xargs) # trim whitespace
+              echo "Deploying $app..."
+              npx nx run $app:deploy
+            done
+          fi
+
+      # Verify deployments
+      - name: Verify deployments
+        run: |
+          echo "Verifying deployments in namespace ${K8S_NAMESPACE}..."
+          kubectl get deployments -n ${K8S_NAMESPACE}
+          kubectl get pods -n ${K8S_NAMESPACE}
+          kubectl get services -n ${K8S_NAMESPACE}
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "========================================="
+          echo "📊 Deployment Summary"
+          echo "========================================="
+          echo "Version: ${VERSION}"
+          echo "Apps: ${DEPLOY_APPS}"
+          echo "Status: ${{ job.status }}"
+          echo "========================================="

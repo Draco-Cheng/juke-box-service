@@ -1,0 +1,70 @@
+{
+  "projectType": "application",
+  "targets": {
+    "deps": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pip install .[dev]",
+        "cwd": "apps/backend"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "pip install .",
+        "cwd": "apps/backend"
+      },
+      "dependsOn": ["deps"]
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          {
+            "command": "python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+            "forwardAllArgs": false
+          }
+        ],
+        "cwd": "apps/backend"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "ruff check .",
+        "cwd": "apps/backend"
+      },
+      "dependsOn": ["deps"]
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python -m pytest -v",
+        "cwd": "apps/backend"
+      },
+      "dependsOn": ["deps"]
+    },
+    "publish": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker build -t \"$DOCKER_USERNAME/${REPO_NAME}_backend:$VERSION\" -t \"$DOCKER_USERNAME/${REPO_NAME}_backend:latest\" . && docker push \"$DOCKER_USERNAME/${REPO_NAME}_backend:$VERSION\" && docker push \"$DOCKER_USERNAME/${REPO_NAME}_backend:latest\"",
+        "cwd": "apps/backend"
+      },
+      "dependsOn": ["build"]
+    },
+    "retag": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "docker buildx imagetools create --tag \"$DOCKER_USERNAME/${REPO_NAME}_backend:$VERSION\" \"$DOCKER_USERNAME/${REPO_NAME}_backend:latest\"",
+        "cwd": "apps/backend"
+      }
+    },
+    "deploy": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "helm upgrade --install backend-${K8S_NAMESPACE} helm --namespace ${K8S_NAMESPACE} --set image.repository=${DOCKER_USERNAME}/${REPO_NAME}_backend --set image.tag=${VERSION}",
+        "cwd": "apps/backend"
+      }
+    }
+  }
+}

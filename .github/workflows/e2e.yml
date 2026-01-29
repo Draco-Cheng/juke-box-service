@@ -1,0 +1,59 @@
+name: Nightly E2E Tests
+
+on:
+  # Run E2E tests nightly (full suite)
+  # schedule:
+  #   - cron: '0 2 * * *'  # Every day at 2 AM UTC
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual E2E test run'
+        required: false
+        default: 'Manual E2E test run'
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Node.js setup & cache
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+
+      # Python setup for backend
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      # Install main browsers (Chromium, Firefox, Webkit)
+      - name: Install Playwright dependencies
+        run: npx playwright install chromium firefox webkit --with-deps
+
+      # Build dependencies and run all E2E tests
+      - name: Build and run all E2E tests
+        run: |
+          # Build all services first
+          npx nx build backend frontend
+
+          # Run all E2E tests (services will be auto-started by Playwright)
+          npx nx run-many -t e2e
+
+      # Trigger deployment if E2E tests pass
+      - name: Trigger deployment
+        if: success()
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: e2e-passed

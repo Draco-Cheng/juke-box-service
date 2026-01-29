@@ -1,0 +1,172 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual trigger'
+        required: false
+        default: 'Manual CD run'
+
+permissions:
+  contents: write
+  actions: read
+
+# Ensure only one deployment runs at a time
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+
+      # === Docker settings ===
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+      # === Kubernetes ===
+      K8S_NAMESPACE: mono-repo-skeleton
+      K8S_CA_DATA: ${{ secrets.K8S_CA_DATA }}
+      K8S_CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT }}
+      K8S_CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY }}
+      K8S_SERVER: ${{ secrets.K8S_SERVER }}
+
+      # === GitHub context ===
+      REPO_NAME: ${{ github.event.repository.name }}
+      BRANCH_NAME: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+
+      # Python and UV setup for backend projects
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - uses: astral-sh/setup-uv@v3
+
+      # Set up base and head refs for nx affected
+      - name: Set base and head SHAs
+        uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: 'main'
+
+      - name: Check if there are affected projects
+        id: check-affected
+        run: |
+          AFFECTED=$(npx nx show projects --affected --base=${{ env.NX_BASE }} --head=${{ env.NX_HEAD }})
+          if [ -n "$AFFECTED" ]; then
+            echo "has-affected=true" >> $GITHUB_OUTPUT
+            echo "Affected projects found, will create new version"
+          else
+            echo "has-affected=false" >> $GITHUB_OUTPUT
+            echo "No affected projects, skipping version creation"
+          fi
+
+      - name: Run nx release to generate version and tag
+        if: steps.check-affected.outputs.has-affected == 'true'
+        run: |
+          # Configure git for nx release
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          # Create initial semantic version tag if none exists
+          SEMANTIC_TAGS=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | head -1)
+          if [ -z "$SEMANTIC_TAGS" ]; then
+            echo "No semantic version tags found, creating initial v0.1.0 tag"
+            git tag v0.1.0
+            git push origin v0.1.0
+            VERSION="v0.1.0"
+          else
+            echo "Existing semantic version tags found: $SEMANTIC_TAGS"
+
+            # Check if latest commit is feat (for minor bump) or default to patch
+            LATEST_COMMIT_MSG=$(git log -1 --pretty=%B)
+            if echo "$LATEST_COMMIT_MSG" | grep -q "^feat"; then
+              echo "Feature commit detected, will bump minor version"
+              npx nx release version minor
+            else
+              echo "Non-feature commit, will bump patch version"
+              npx nx release version patch
+            fi
+
+            # Get the newly created version tag
+            git fetch --tags
+            VERSION=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -1)
+            echo "Latest version after nx release: $VERSION"
+          fi
+
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Generated version: $VERSION"
+
+      - name: Identify affected projects
+        run: |
+          echo "Event Name: ${{ github.event_name }}"
+          echo "NX_BASE: ${{ env.NX_BASE }}"
+          echo "NX_HEAD: ${{ env.NX_HEAD }}"
+          echo "VERSION: ${{ env.VERSION }}"
+          echo "Affected projects:"
+          npx nx show projects --affected --base=${{ env.NX_BASE }} --head=${{ env.NX_HEAD }}
+
+      - name: Build and lint affected projects
+        run: npx nx affected -t lint build --base=${{ env.NX_BASE }} --head=${{ env.NX_HEAD }}
+
+      - name: Login to Docker Hub
+        run: |
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
+      - name: Publish affected projects
+        run: |
+          npx nx affected -t publish --base=${{ env.NX_BASE }} --head=${{ env.NX_HEAD }}
+
+      - name: Get last version for retagging
+        run: |
+          # Get the previous successful version (could be from git tags or a registry)
+          LAST_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "latest")
+          echo "LAST_VERSION=$LAST_VERSION" >> $GITHUB_ENV
+          echo "Last version for retagging: $LAST_VERSION"
+
+      - name: Retag non-affected projects with unified version
+        run: bash .github/scripts/retag-non-affected.sh
+
+      - name: Add release notes to git tag
+        run: bash .github/scripts/annotate-release-tag.sh
+
+      # Setup kubectl and Helm for deployment
+      - name: Setup kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Setup Kubernetes environment
+        run: bash .github/scripts/setup-k8s.sh
+
+      # Deploy infrastructure components (namespace, ingress) using Helm
+      - name: Deploy infrastructure components
+        run: bash .github/scripts/deploy-infra.sh
+
+      # Deploy affected projects to Kubernetes using Helm
+      - name: Deploy affected projects to Kubernetes
+        run: |
+          npx nx affected -t deploy --base=${{ env.NX_BASE }} --head=${{ env.NX_HEAD }}
