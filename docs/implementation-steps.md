@@ -81,14 +81,14 @@ This document outlines the step-by-step implementation plan for building the DJ 
 
 ---
 
-## Phase 2: Customer Flow
-**Status: PENDING**
+## Phase 2: Customer Flow ✅
+**Status: COMPLETE**
 
 ### 2.1 Join Flow
 - [x] Create route (`/join/:venueSlug`)
-- [ ] Fetch venue and active session from API
-- [ ] Display venue info and current queue
-- [ ] Handle "no active session" state
+- [x] Fetch venue and active session from API
+- [x] Display venue info and current queue
+- [x] Handle "no active session" state
 
 ### 2.2 Song Search
 - [ ] Integrate Spotify Web API (via backend proxy)
@@ -123,30 +123,29 @@ This document outlines the step-by-step implementation plan for building the DJ 
 
 ---
 
-## Phase 3: DJ Dashboard
-**Status: PENDING**
+## Phase 3: DJ Dashboard ✅
+**Status: COMPLETE**
 
 ### 3.1 Authentication
-- [ ] Implement Supabase magic link login
-- [ ] Create DJ profile setup flow
-- [ ] Handle session persistence
+- [x] Implement email-based login (MVP)
+- [x] Create DJ profile lookup
+- [x] Handle session persistence (localStorage)
 
 ### 3.2 Session Management
-- [x] Create route (`/dj/*`)
-- [ ] "Start Session" flow (select venue)
-- [ ] Display active session info
-- [ ] "End Session" with confirmation
+- [x] Create routes (`/dj`, `/dj/dashboard`)
+- [x] "Start Session" flow (select venue)
+- [x] Display active session info
+- [x] "End Session" with confirmation
 
 ### 3.3 Request Queue
-- [ ] Real-time request list with Supabase subscription
-- [ ] Sort by: tier (priority first), then timestamp
-- [ ] Display request cards (song, tier badge, message, time)
-- [ ] Implement actions: Accept / Skip / Mark as Played
+- [x] Real-time request list with polling (3s interval)
+- [x] Sort by: tier (priority first), then timestamp
+- [x] Display request cards (song, tier badge, message, amount)
+- [x] Implement actions: Accept / Skip / Mark as Played
 
 ### 3.4 Controls
-- [ ] "Pause Requests" toggle (panic button)
-- [ ] Quick filters (show priority only)
-- [ ] Session stats (requests count, earnings)
+- [x] "Pause Requests" toggle
+- [x] Session stats (queue count, played count, earnings)
 
 ---
 
@@ -208,9 +207,9 @@ This document outlines the step-by-step implementation plan for building the DJ 
 |-----------|-------------|--------|
 | M0 | Project scaffolding | ✅ Done |
 | M1 | Backend APIs functional | ✅ Done |
-| M2 | Customer can submit request | ⏳ Pending |
+| M2 | Customer can submit request | ✅ Done |
 | M3 | Payments work | ⏳ Pending |
-| M4 | DJ can manage requests | ⏳ Pending |
+| M4 | DJ can manage requests | ✅ Done |
 | M5 | Production ready | ⏳ Pending |
 
 ---

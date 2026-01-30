@@ -1,0 +1,353 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { api, DJ, Venue, Session, Request, SessionWithVenue } from '../../lib/api'
+
+const TIER_COLORS = {
+  asap: 'bg-red-600',
+  priority: 'bg-yellow-500',
+  normal: 'bg-gray-600',
+}
+
+const TIER_LABELS = {
+  asap: 'ASAP',
+  priority: 'Priority',
+  normal: 'Normal',
+}
+
+const STATUS_COLORS = {
+  pending: 'bg-blue-600',
+  accepted: 'bg-green-600',
+  rejected: 'bg-red-600',
+  played: 'bg-purple-600',
+}
+
+export default function DJDashboardPage() {
+  const navigate = useNavigate()
+  const [dj, setDJ] = useState<DJ | null>(null)
+  const [venues, setVenues] = useState<Venue[]>([])
+  const [activeSession, setActiveSession] = useState<SessionWithVenue | null>(null)
+  const [requests, setRequests] = useState<Request[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedVenueId, setSelectedVenueId] = useState<string>('')
+
+  // Load DJ from localStorage
+  useEffect(() => {
+    const storedDJ = localStorage.getItem('dj')
+    if (!storedDJ) {
+      navigate('/dj')
+      return
+    }
+    setDJ(JSON.parse(storedDJ))
+  }, [navigate])
+
+  // Fetch DJ data
+  const fetchData = useCallback(async () => {
+    if (!dj) return
+
+    try {
+      const [venuesData, sessionData] = await Promise.all([
+        api.getDJVenues(dj.id),
+        api.getDJActiveSession(dj.id),
+      ])
+      setVenues(venuesData)
+      setActiveSession(sessionData)
+
+      if (sessionData) {
+        const requestsData = await api.getSessionRequests(sessionData.id)
+        setRequests(requestsData)
+      }
+    } catch (error) {
+      console.error('Failed to fetch data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [dj])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // Poll for new requests every 3 seconds when session is active
+  useEffect(() => {
+    if (!activeSession) return
+
+    const interval = setInterval(async () => {
+      try {
+        const requestsData = await api.getSessionRequests(activeSession.id)
+        setRequests(requestsData)
+      } catch (error) {
+        console.error('Failed to poll requests:', error)
+      }
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [activeSession])
+
+  const handleStartSession = async () => {
+    if (!dj || !selectedVenueId) return
+
+    try {
+      const session = await api.createSession(selectedVenueId, dj.id)
+      // Refetch to get session with venue
+      const sessionData = await api.getDJActiveSession(dj.id)
+      setActiveSession(sessionData)
+      setRequests([])
+    } catch (error) {
+      console.error('Failed to start session:', error)
+    }
+  }
+
+  const handleEndSession = async () => {
+    if (!activeSession) return
+
+    if (!confirm('End this session? All pending requests will remain.')) return
+
+    try {
+      await api.updateSession(activeSession.id, 'ended')
+      setActiveSession(null)
+      setRequests([])
+    } catch (error) {
+      console.error('Failed to end session:', error)
+    }
+  }
+
+  const handlePauseSession = async () => {
+    if (!activeSession) return
+
+    const newStatus = activeSession.status === 'paused' ? 'active' : 'paused'
+    try {
+      await api.updateSession(activeSession.id, newStatus)
+      setActiveSession({ ...activeSession, status: newStatus })
+    } catch (error) {
+      console.error('Failed to update session:', error)
+    }
+  }
+
+  const handleRequestAction = async (requestId: string, status: Request['status']) => {
+    try {
+      await api.updateRequest(requestId, status)
+      setRequests(requests.map(r => r.id === requestId ? { ...r, status } : r))
+    } catch (error) {
+      console.error('Failed to update request:', error)
+    }
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('dj')
+    navigate('/dj')
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    )
+  }
+
+  const pendingRequests = requests.filter(r => r.status === 'pending' || r.status === 'accepted')
+  const playedRequests = requests.filter(r => r.status === 'played')
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      {/* Header */}
+      <header className="border-b border-gray-800 p-4">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold">{dj?.name || 'DJ Dashboard'}</h1>
+            {activeSession && (
+              <p className="text-sm text-gray-400">
+                @ {activeSession.venues?.name || 'Unknown Venue'}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-white text-sm"
+          >
+            Logout
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto p-4">
+        {/* No active session - Start Session UI */}
+        {!activeSession && (
+          <div className="bg-gray-900 rounded-lg p-6 text-center">
+            <h2 className="text-xl font-semibold mb-4">Start a Session</h2>
+
+            {venues.length === 0 ? (
+              <p className="text-gray-400">No venues available. Create a test venue first.</p>
+            ) : (
+              <div className="space-y-4">
+                <select
+                  value={selectedVenueId}
+                  onChange={(e) => setSelectedVenueId(e.target.value)}
+                  className="w-full max-w-xs px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg"
+                >
+                  <option value="">Select a venue</option>
+                  {venues.map((venue) => (
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={handleStartSession}
+                  disabled={!selectedVenueId}
+                  className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg font-semibold transition"
+                >
+                  Start Session
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Active session */}
+        {activeSession && (
+          <>
+            {/* Session Controls */}
+            <div className="flex gap-3 mb-6">
+              <button
+                onClick={handlePauseSession}
+                className={`flex-1 py-3 rounded-lg font-semibold transition ${
+                  activeSession.status === 'paused'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-yellow-600 hover:bg-yellow-700'
+                }`}
+              >
+                {activeSession.status === 'paused' ? 'Resume Requests' : 'Pause Requests'}
+              </button>
+              <button
+                onClick={handleEndSession}
+                className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition"
+              >
+                End Session
+              </button>
+            </div>
+
+            {activeSession.status === 'paused' && (
+              <div className="bg-yellow-900/50 border border-yellow-600 rounded-lg p-4 mb-6 text-center">
+                <p className="text-yellow-300 font-semibold">Requests are paused</p>
+              </div>
+            )}
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-gray-900 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold">{pendingRequests.length}</p>
+                <p className="text-sm text-gray-400">Queue</p>
+              </div>
+              <div className="bg-gray-900 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold">{playedRequests.length}</p>
+                <p className="text-sm text-gray-400">Played</p>
+              </div>
+              <div className="bg-gray-900 rounded-lg p-4 text-center">
+                <p className="text-2xl font-bold">
+                  €{(requests.reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(0)}
+                </p>
+                <p className="text-sm text-gray-400">Earnings</p>
+              </div>
+            </div>
+
+            {/* Request Queue */}
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold">Request Queue</h2>
+
+              {pendingRequests.length === 0 ? (
+                <div className="bg-gray-900 rounded-lg p-8 text-center">
+                  <p className="text-gray-500">No pending requests</p>
+                  <p className="text-gray-600 text-sm mt-1">
+                    Share the QR code to get requests!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="bg-gray-900 rounded-lg p-4"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <p className="font-semibold">{request.song_title}</p>
+                          {request.song_artist && (
+                            <p className="text-gray-400 text-sm">{request.song_artist}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`${TIER_COLORS[request.tier]} px-2 py-0.5 rounded text-xs font-semibold`}>
+                            {TIER_LABELS[request.tier]}
+                          </span>
+                          <span className="text-green-400 font-semibold">
+                            €{(request.amount / 100).toFixed(0)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {request.message && (
+                        <p className="text-gray-400 text-sm mb-3 italic">"{request.message}"</p>
+                      )}
+
+                      <div className="flex gap-2">
+                        {request.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleRequestAction(request.id, 'accepted')}
+                              className="flex-1 py-2 bg-green-600 hover:bg-green-700 rounded font-semibold text-sm transition"
+                            >
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleRequestAction(request.id, 'rejected')}
+                              className="py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded font-semibold text-sm transition"
+                            >
+                              Skip
+                            </button>
+                          </>
+                        )}
+                        {request.status === 'accepted' && (
+                          <button
+                            onClick={() => handleRequestAction(request.id, 'played')}
+                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold text-sm transition"
+                          >
+                            Mark as Played
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Played Requests */}
+            {playedRequests.length > 0 && (
+              <div className="mt-8 space-y-4">
+                <h2 className="text-lg font-semibold text-gray-400">Played</h2>
+                <div className="space-y-2">
+                  {playedRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="bg-gray-900/50 rounded-lg p-3 flex justify-between items-center"
+                    >
+                      <div>
+                        <p className="text-gray-400">{request.song_title}</p>
+                        {request.song_artist && (
+                          <p className="text-gray-500 text-sm">{request.song_artist}</p>
+                        )}
+                      </div>
+                      <span className="text-purple-400 text-sm">✓ Played</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  )
+}

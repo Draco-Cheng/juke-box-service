@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8001/api'
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -61,6 +61,20 @@ export interface RequestCreate {
   customer_id?: string
 }
 
+export interface DJ {
+  id: string
+  user_id: string | null
+  name: string
+  email: string
+  stripe_account_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SessionWithVenue extends Session {
+  venues: Venue
+}
+
 // API functions
 export const api = {
   // Venues
@@ -74,4 +88,46 @@ export const api = {
       body: JSON.stringify(data),
     }),
   getSessionRequests: (sessionId: string) => request<Request[]>(`/requests/session/${sessionId}`),
+  updateRequest: (requestId: string, status: Request['status']) =>
+    request<Request>(`/requests/${requestId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  // DJs
+  getDJByEmail: (email: string) => request<DJ>(`/djs/by-email/${email}`),
+  getDJ: (djId: string) => request<DJ>(`/djs/${djId}`),
+  getDJVenues: (djId: string) => request<Venue[]>(`/djs/${djId}/venues`),
+  getDJActiveSession: (djId: string) => request<SessionWithVenue | null>(`/djs/${djId}/active-session`),
+
+  // Sessions
+  createSession: (venueId: string, djId: string) =>
+    request<Session>('/sessions/', {
+      method: 'POST',
+      body: JSON.stringify({ venue_id: venueId, dj_id: djId }),
+    }),
+  updateSession: (sessionId: string, status: Session['status']) =>
+    request<Session>(`/sessions/${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  // Payments
+  getStripeConfig: () => request<{ publishable_key: string }>('/payments/config'),
+  createPaymentIntent: (data: {
+    session_id: string
+    song_title: string
+    song_artist?: string
+    message?: string
+    tier: 'normal' | 'priority' | 'asap'
+    amount: number
+  }) =>
+    request<{ client_secret: string; payment_intent_id: string }>('/payments/create-payment-intent', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  confirmPayment: (paymentIntentId: string) =>
+    request<{ success: boolean; request: Request }>(`/payments/confirm-payment/${paymentIntentId}`, {
+      method: 'POST',
+    }),
 }
