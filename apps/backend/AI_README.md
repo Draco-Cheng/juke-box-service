@@ -7,12 +7,29 @@ Python 3.10+ / FastAPI / Supabase / Stripe
 ## Key Files
 
 - `main.py` — FastAPI app entry
-- `routes/` — API route handlers (to be added)
-- `services/` — Business logic (to be added)
+- `routes/` — venues, sessions, requests API handlers
+- `models/` — Pydantic schemas
+- `database.py` — Supabase client
+- `config.py` — Environment config
 
-## Conventions
+## Commands
 
-- All routes prefixed with `/api`
-- Use Supabase Python client for DB
-- Stripe for payments
-- python-dotenv for config
+```bash
+nx serve backend    # Start dev server (port 8000)
+nx test backend     # Run tests
+nx lint backend     # Run ruff linter
+```
+
+## Database
+
+Migration files: `supabase/migrations/<timestamp>_name.sql`
+
+```bash
+npx supabase db push   # Apply migrations to cloud
+```
+
+Note: Migration filenames must follow `<timestamp>_name.sql` format (e.g., `20250130000000_init.sql`)
+
+
+
+

@@ -21,7 +21,7 @@
       "options": {
         "commands": [
           {
-            "command": "python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+            "command": "C:\\Python310\\python.exe -m uvicorn main:app --reload --host 0.0.0.0 --port 8000",
             "forwardAllArgs": false
           }
         ],

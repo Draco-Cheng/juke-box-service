@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from routes import venues_router, sessions_router, requests_router
 
 app = FastAPI(
     title="DJ Request API",
@@ -16,19 +17,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/")
 @app.head("/")
 def health_check():
     """Health check endpoint"""
     return {"status": "ok", "service": "dj-request"}
 
+
 @app.get("/api/ping")
 def ping():
     """Simple ping endpoint"""
     return {"result": "pong"}
 
-# TODO: Import and include routers
-# from routes import sessions, requests, venues
-# app.include_router(sessions.router, prefix="/api")
-# app.include_router(requests.router, prefix="/api")
-# app.include_router(venues.router, prefix="/api")
+
+# Include routers
+app.include_router(venues_router, prefix="/api")
+app.include_router(sessions_router, prefix="/api")
+app.include_router(requests_router, prefix="/api")

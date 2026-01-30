@@ -6,6 +6,7 @@
   "scripts": {},
   "private": true,
   "devDependencies": {
+    "supabase": "^2.23.0",
     "@nx/js": "21.4.0",
     "@nx/node": "21.4.0",
     "@nx/vite": "21.4.0",

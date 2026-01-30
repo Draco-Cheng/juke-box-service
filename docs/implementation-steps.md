@@ -47,8 +47,8 @@ This document outlines the step-by-step implementation plan for building the DJ 
 
 ---
 
-## Phase 1: Core Backend
-**Status: IN PROGRESS**
+## Phase 1: Core Backend ✅
+**Status: COMPLETE**
 
 ### 1.1 Database Schema
 - [x] Create migration with tables:
@@ -57,21 +57,23 @@ This document outlines the step-by-step implementation plan for building the DJ 
   - `sessions` (id, venue_id, dj_id, status)
   - `requests` (id, session_id, song_title, tier, amount, status)
   - `payments` (id, request_id, stripe_payment_id, amount)
+- [x] Apply migration to Supabase Cloud
 
 ### 1.2 API Endpoints
-- [ ] **Sessions**
+- [x] **Sessions**
   - `POST /api/sessions` - Create new session (DJ)
   - `GET /api/sessions/:id` - Get session details
   - `PATCH /api/sessions/:id` - Update session status
 
-- [ ] **Requests**
+- [x] **Requests**
   - `POST /api/requests` - Submit new request (Customer)
   - `PATCH /api/requests/:id` - Update request status (DJ)
-  - `GET /api/sessions/:id/requests` - Get requests for session
+  - `GET /api/requests/session/:id` - Get requests for session
 
-- [ ] **Venues**
+- [x] **Venues**
   - `GET /api/venues/:slug` - Get venue by slug
   - `GET /api/venues/:slug/active-session` - Get current active session
+  - `POST /api/venues` - Create venue
 
 ### 1.3 Real-time Subscriptions
 - [ ] Set up Supabase Realtime for `requests` table
@@ -205,7 +207,7 @@ This document outlines the step-by-step implementation plan for building the DJ 
 | Milestone | Deliverable | Status |
 |-----------|-------------|--------|
 | M0 | Project scaffolding | ✅ Done |
-| M1 | Backend APIs functional | 🔄 In Progress |
+| M1 | Backend APIs functional | ✅ Done |
 | M2 | Customer can submit request | ⏳ Pending |
 | M3 | Payments work | ⏳ Pending |
 | M4 | DJ can manage requests | ⏳ Pending |

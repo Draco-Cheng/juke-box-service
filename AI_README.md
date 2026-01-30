@@ -23,6 +23,14 @@ DJ Request — paid song request platform for bars/clubs. Customers pay to reque
 - Use Supabase for DB + real-time subscriptions
 - Frontend is PWA — no app store
 
+## Database Migrations
+
+Migration files in `supabase/migrations/` must use format: `<timestamp>_name.sql`
+
+```bash
+npx supabase db push   # Apply migrations to Supabase cloud
+```
+
 ## Docs
 
 - [spec.md](docs/spec.md) — full product spec
