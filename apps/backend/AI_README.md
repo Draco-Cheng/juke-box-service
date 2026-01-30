@@ -2,17 +2,17 @@
 
 ## Stack
 
-Node.js + Express + Supabase + Stripe
+Python 3.10+ / FastAPI / Supabase / Stripe
 
 ## Key Files
 
-- `src/index.ts` — Express app entry
-- `src/routes/` — API route handlers
-- `src/services/` — Business logic (payments, Spotify)
+- `main.py` — FastAPI app entry
+- `routes/` — API route handlers (to be added)
+- `services/` — Business logic (to be added)
 
 ## Conventions
 
 - All routes prefixed with `/api`
-- Use Supabase client for DB operations
-- Stripe Connect for multi-party payouts
-- TypeScript with strict mode
+- Use Supabase Python client for DB
+- Stripe for payments
+- python-dotenv for config

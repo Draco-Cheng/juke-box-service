@@ -1,18 +1,19 @@
 {
-  "name": "@mono-repo-skeleton/source",
-  "version": "0.0.0",
+  "name": "dj-request",
+  "version": "0.1.0",
+  "description": "Paid song request platform for bars and clubs",
   "license": "MIT",
   "scripts": {},
   "private": true,
   "devDependencies": {
     "@nx/js": "21.4.0",
-    "@nx/playwright": "^21.4.0",
+    "@nx/node": "21.4.0",
+    "@nx/vite": "21.4.0",
     "@nx/web": "21.4.0",
-    "@playwright/test": "^1.36.0",
     "@swc-node/register": "~1.9.1",
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
-    "@types/node": "18.16.9",
+    "@types/node": "^20",
     "nx": "21.4.0",
     "swc-loader": "0.1.15",
     "tslib": "^2.3.0",
@@ -22,8 +23,5 @@
     "packages/*",
     "apps/*"
   ],
-  "dependencies": {
-    "axios": "^1.6.0",
-    "wait-on": "^8.0.0"
-  }
+  "dependencies": {}
 }

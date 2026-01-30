@@ -1,10 +1,14 @@
 [project]
-name = "backend"
+name = "dj-request-backend"
 version = "0.1.0"
-description = "FastAPI backend for Nx monorepo"
+description = "DJ Request API - Paid song request platform"
 dependencies = [
     "fastapi>=0.111.0",
-    "uvicorn>=0.30.0"
+    "uvicorn>=0.30.0",
+    "supabase>=2.0.0",
+    "stripe>=8.0.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.25.0"
 ]
 requires-python = ">=3.10"
 
@@ -15,8 +19,7 @@ find = {}
 dev = [
     "ruff>=0.8.2",
     "pytest>=8.0.0",
-    "pytest-asyncio>=1.0.0",
-    "httpx>=0.25.0"
+    "pytest-asyncio>=1.0.0"
 ]
 
 [build-system]

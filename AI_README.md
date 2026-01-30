@@ -6,9 +6,9 @@ DJ Request — paid song request platform for bars/clubs. Customers pay to reque
 
 ## Tech Stack
 
-- **Frontend**: React + Vite (PWA), TypeScript, TailwindCSS
-- **Backend**: Node.js + Express + Supabase
-- **Payments**: Stripe Connect
+- **Frontend**: Vite + React 18 (PWA), TypeScript, TailwindCSS
+- **Backend**: Python FastAPI + Supabase
+- **Payments**: Stripe
 - **Song Search**: Spotify Web API (metadata only)
 
 ## Key Concepts
