@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, DJ, Venue, Session, Request, SessionWithVenue } from '../../lib/api'
+import { api, DJ, Venue, Request, SessionWithVenue } from '../../lib/api'
+import { useRequestsRealtime } from '../../hooks/useRequestsRealtime'
 
 const TIER_COLORS = {
   asap: 'bg-red-600',
@@ -34,11 +35,19 @@ export default function DJDashboardPage() {
   const [dj, setDJ] = useState<DJ | null>(null)
   const [venues, setVenues] = useState<Venue[]>([])
   const [activeSession, setActiveSession] = useState<SessionWithVenue | null>(null)
-  const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedVenueId, setSelectedVenueId] = useState<string>('')
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null)
   const [connectLoading, setConnectLoading] = useState(false)
+
+  // Realtime subscription for requests
+  const {
+    requests,
+    isRealtime,
+    refetch: refetchRequests,
+  } = useRequestsRealtime({
+    sessionId: activeSession?.id ?? null,
+  })
 
   // Load DJ from localStorage
   useEffect(() => {
@@ -73,11 +82,6 @@ export default function DJDashboardPage() {
       setVenues(venuesData)
       setActiveSession(sessionData)
 
-      if (sessionData) {
-        const requestsData = await api.getSessionRequests(sessionData.id)
-        setRequests(requestsData)
-      }
-
       // Fetch Connect status
       await fetchConnectStatus()
     } catch (error) {
@@ -91,22 +95,6 @@ export default function DJDashboardPage() {
     fetchData()
   }, [fetchData])
 
-  // Poll for new requests every 3 seconds when session is active
-  useEffect(() => {
-    if (!activeSession) return
-
-    const interval = setInterval(async () => {
-      try {
-        const requestsData = await api.getSessionRequests(activeSession.id)
-        setRequests(requestsData)
-      } catch (error) {
-        console.error('Failed to poll requests:', error)
-      }
-    }, 3000)
-
-    return () => clearInterval(interval)
-  }, [activeSession])
-
   const handleStartSession = async () => {
     if (!dj || !selectedVenueId) return
 
@@ -115,7 +103,6 @@ export default function DJDashboardPage() {
       // Refetch to get session with venue
       const sessionData = await api.getDJActiveSession(dj.id)
       setActiveSession(sessionData)
-      setRequests([])
     } catch (error) {
       console.error('Failed to start session:', error)
     }
@@ -129,7 +116,6 @@ export default function DJDashboardPage() {
     try {
       await api.updateSession(activeSession.id, 'ended')
       setActiveSession(null)
-      setRequests([])
     } catch (error) {
       console.error('Failed to end session:', error)
     }
@@ -150,9 +136,11 @@ export default function DJDashboardPage() {
   const handleRequestAction = async (requestId: string, status: Request['status']) => {
     try {
       await api.updateRequest(requestId, status)
-      setRequests(requests.map(r => r.id === requestId ? { ...r, status } : r))
+      // Realtime subscription will automatically update the UI
     } catch (error) {
       console.error('Failed to update request:', error)
+      // Refetch on error to ensure consistency
+      refetchRequests()
     }
   }
 

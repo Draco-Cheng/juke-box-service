@@ -75,9 +75,11 @@ This document outlines the step-by-step implementation plan for building the DJ 
   - `GET /api/venues/:slug/active-session` - Get current active session
   - `POST /api/venues` - Create venue
 
-### 1.3 Real-time Subscriptions
-- [ ] Set up Supabase Realtime for `requests` table
-- [ ] Configure broadcast channels for session events
+### 1.3 Real-time Subscriptions ✅
+- [x] Set up Supabase Realtime for `requests` table
+- [x] Create `useRequestsRealtime` hook with INSERT/UPDATE subscriptions
+- [x] Fallback to polling when Supabase not configured
+- [ ] Configure broadcast channels for session events (optional)
 
 ---
 
@@ -138,7 +140,7 @@ This document outlines the step-by-step implementation plan for building the DJ 
 - [x] "End Session" with confirmation
 
 ### 3.3 Request Queue
-- [x] Real-time request list with polling (3s interval)
+- [x] Real-time request list via Supabase Realtime (fallback: 3s polling)
 - [x] Sort by: tier (priority first), then timestamp
 - [x] Display request cards (song, tier badge, message, amount)
 - [x] Implement actions: Accept / Skip / Mark as Played
@@ -233,9 +235,10 @@ This document outlines the step-by-step implementation plan for building the DJ 
 3. ~~**Connect frontend to backend** - fetch venue, display queue~~ ✅
 4. ~~**Test core loop** - customer submits request, DJ sees it~~ ✅
 5. ~~**Add Stripe payments**~~ ✅ (Basic integration done)
-6. **Complete Stripe Connect** - DJ onboarding and payout splitting
-7. **Add Supabase Realtime** - Replace polling with WebSocket subscriptions
+6. ~~**Complete Stripe Connect**~~ ✅ - DJ onboarding and payout splitting
+7. ~~**Add Supabase Realtime**~~ ✅ - Replace polling with WebSocket subscriptions
 8. **Integrate Spotify API** - Song search functionality
+9. **Add Payment Webhooks** - Handle payment success/failure events
 
 ---
 
