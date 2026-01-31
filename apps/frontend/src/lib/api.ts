@@ -71,6 +71,15 @@ export interface DJ {
   updated_at: string
 }
 
+export interface SpotifyTrack {
+  id: string
+  name: string
+  artists: string[]
+  album: string
+  image_url: string | null
+  duration_ms: number
+}
+
 export interface SessionWithVenue extends Session {
   venues: Venue
 }
@@ -118,6 +127,7 @@ export const api = {
     session_id: string
     song_title: string
     song_artist?: string
+    spotify_track_id?: string
     message?: string
     tier: 'normal' | 'priority' | 'asap'
     amount: number
@@ -148,5 +158,13 @@ export const api = {
       }>(`/connect/${djId}/status`),
     getDashboard: (djId: string) =>
       request<{ dashboard_url: string }>(`/connect/${djId}/dashboard`),
+  },
+
+  // Spotify
+  spotify: {
+    search: (query: string, limit: number = 10) =>
+      request<SpotifyTrack[]>(`/spotify/search?q=${encodeURIComponent(query)}&limit=${limit}`),
+    getTrack: (trackId: string) =>
+      request<SpotifyTrack>(`/spotify/track/${trackId}`),
   },
 }

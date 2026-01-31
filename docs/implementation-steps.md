@@ -92,11 +92,11 @@ This document outlines the step-by-step implementation plan for building the DJ 
 - [x] Display venue info and current queue
 - [x] Handle "no active session" state
 
-### 2.2 Song Search
-- [ ] Integrate Spotify Web API (via backend proxy)
-- [ ] Build search input with debounce
-- [ ] Display search results (track, artist, album art)
-- [ ] Handle "manual input" fallback
+### 2.2 Song Search ✅
+- [x] Integrate Spotify Web API (via backend proxy)
+- [x] Build search input with debounce
+- [x] Display search results (track, artist, album art)
+- [x] Handle "manual input" fallback
 
 ### 2.3 Request Submission
 - [ ] Build request form
@@ -237,7 +237,7 @@ This document outlines the step-by-step implementation plan for building the DJ 
 5. ~~**Add Stripe payments**~~ ✅ (Basic integration done)
 6. ~~**Complete Stripe Connect**~~ ✅ - DJ onboarding and payout splitting
 7. ~~**Add Supabase Realtime**~~ ✅ - Replace polling with WebSocket subscriptions
-8. **Integrate Spotify API** - Song search functionality
+8. ~~**Integrate Spotify API**~~ ✅ - Song search functionality
 9. **Add Payment Webhooks** - Handle payment success/failure events
 
 ---

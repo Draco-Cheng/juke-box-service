@@ -16,6 +16,7 @@ class CreatePaymentIntentRequest(BaseModel):
     session_id: str
     song_title: str
     song_artist: str | None = None
+    spotify_track_id: str | None = None
     message: str | None = None
     tier: str = "normal"
     amount: int  # in cents
@@ -61,6 +62,7 @@ async def create_payment_intent(request: CreatePaymentIntentRequest):
                 "session_id": request.session_id,
                 "song_title": request.song_title,
                 "song_artist": request.song_artist or "",
+                "spotify_track_id": request.spotify_track_id or "",
                 "message": request.message or "",
                 "tier": request.tier,
             },
@@ -105,6 +107,7 @@ async def confirm_payment(payment_intent_id: str):
             "session_id": metadata.get("session_id"),
             "song_title": metadata.get("song_title"),
             "song_artist": metadata.get("song_artist") or None,
+            "spotify_track_id": metadata.get("spotify_track_id") or None,
             "message": metadata.get("message") or None,
             "tier": metadata.get("tier", "normal"),
             "amount": payment_intent.amount,

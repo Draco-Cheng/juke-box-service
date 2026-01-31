@@ -1,8 +1,9 @@
 import { useParams } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { api, Venue, Session, Request } from '../lib/api'
+import { api, Venue, Session, Request, SpotifyTrack } from '../lib/api'
+import SongSearch from '../components/SongSearch'
 
 const TIER_PRICES = {
   normal: 200,
@@ -105,9 +106,27 @@ export default function JoinPage() {
   // Form state
   const [songTitle, setSongTitle] = useState('')
   const [songArtist, setSongArtist] = useState('')
+  const [spotifyTrackId, setSpotifyTrackId] = useState<string | null>(null)
   const [tier, setTier] = useState<'normal' | 'priority' | 'asap'>('normal')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Handle song selection from SongSearch
+  const handleSongSelect = useCallback((track: SpotifyTrack | null, manualTitle?: string, manualArtist?: string) => {
+    if (track) {
+      setSongTitle(track.name)
+      setSongArtist(track.artists.join(', '))
+      setSpotifyTrackId(track.id)
+    } else if (manualTitle) {
+      setSongTitle(manualTitle)
+      setSongArtist(manualArtist || '')
+      setSpotifyTrackId(null)
+    } else {
+      setSongTitle('')
+      setSongArtist('')
+      setSpotifyTrackId(null)
+    }
+  }, [])
 
   // Load Stripe
   useEffect(() => {
@@ -155,6 +174,7 @@ export default function JoinPage() {
         session_id: session.id,
         song_title: songTitle.trim(),
         song_artist: songArtist.trim() || undefined,
+        spotify_track_id: spotifyTrackId || undefined,
         tier,
         message: message.trim() || undefined,
         amount: TIER_PRICES[tier],
@@ -176,6 +196,7 @@ export default function JoinPage() {
     setPaymentIntentId(null)
     setSongTitle('')
     setSongArtist('')
+    setSpotifyTrackId(null)
     setMessage('')
     setTier('normal')
 
@@ -243,22 +264,9 @@ export default function JoinPage() {
               <form onSubmit={handleSubmit} className="bg-white rounded-lg p-4 shadow-sm mb-4">
                 <h2 className="font-semibold mb-3">Request a Song</h2>
 
-                <input
-                  type="text"
-                  placeholder="Song title *"
-                  value={songTitle}
-                  onChange={(e) => setSongTitle(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-black"
-                  required
-                />
-
-                <input
-                  type="text"
-                  placeholder="Artist (optional)"
-                  value={songArtist}
-                  onChange={(e) => setSongArtist(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-black"
-                />
+                <div className="mb-3">
+                  <SongSearch onSelect={handleSongSelect} disabled={submitting} />
+                </div>
 
                 {/* Tier Selection */}
                 <div className="flex gap-2 mb-3">
