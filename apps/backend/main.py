@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import venues_router, sessions_router, requests_router, djs_router, payments_router
+from routes import venues_router, sessions_router, requests_router, djs_router, payments_router, connect_router
 
 app = FastAPI(
     title="DJ Request API",
@@ -37,3 +37,4 @@ app.include_router(sessions_router, prefix="/api")
 app.include_router(requests_router, prefix="/api")
 app.include_router(djs_router, prefix="/api")
 app.include_router(payments_router, prefix="/api")
+app.include_router(connect_router, prefix="/api")

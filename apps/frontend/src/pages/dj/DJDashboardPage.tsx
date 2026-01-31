@@ -21,6 +21,14 @@ const STATUS_COLORS = {
   played: 'bg-purple-600',
 }
 
+interface ConnectStatus {
+  connected: boolean
+  details_submitted: boolean
+  charges_enabled: boolean
+  payouts_enabled: boolean
+  account_id: string | null
+}
+
 export default function DJDashboardPage() {
   const navigate = useNavigate()
   const [dj, setDJ] = useState<DJ | null>(null)
@@ -29,6 +37,8 @@ export default function DJDashboardPage() {
   const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedVenueId, setSelectedVenueId] = useState<string>('')
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(null)
+  const [connectLoading, setConnectLoading] = useState(false)
 
   // Load DJ from localStorage
   useEffect(() => {
@@ -39,6 +49,17 @@ export default function DJDashboardPage() {
     }
     setDJ(JSON.parse(storedDJ))
   }, [navigate])
+
+  // Fetch Connect status
+  const fetchConnectStatus = useCallback(async () => {
+    if (!dj) return
+    try {
+      const status = await api.connect.getStatus(dj.id)
+      setConnectStatus(status)
+    } catch (error) {
+      console.error('Failed to fetch connect status:', error)
+    }
+  }, [dj])
 
   // Fetch DJ data
   const fetchData = useCallback(async () => {
@@ -56,12 +77,15 @@ export default function DJDashboardPage() {
         const requestsData = await api.getSessionRequests(sessionData.id)
         setRequests(requestsData)
       }
+
+      // Fetch Connect status
+      await fetchConnectStatus()
     } catch (error) {
       console.error('Failed to fetch data:', error)
     } finally {
       setLoading(false)
     }
-  }, [dj])
+  }, [dj, fetchConnectStatus])
 
   useEffect(() => {
     fetchData()
@@ -137,6 +161,50 @@ export default function DJDashboardPage() {
     navigate('/dj')
   }
 
+  // Handle Stripe Connect onboarding
+  const handleConnectOnboard = async () => {
+    if (!dj) return
+    setConnectLoading(true)
+    try {
+      const baseUrl = window.location.origin
+      const result = await api.connect.startOnboard(
+        dj.id,
+        `${baseUrl}/dj/dashboard?connect=success`,
+        `${baseUrl}/dj/dashboard?connect=refresh`
+      )
+      // Redirect to Stripe onboarding
+      window.location.href = result.onboarding_url
+    } catch (error) {
+      console.error('Failed to start onboarding:', error)
+      setConnectLoading(false)
+    }
+  }
+
+  // Handle Stripe Dashboard link
+  const handleViewDashboard = async () => {
+    if (!dj) return
+    try {
+      const result = await api.connect.getDashboard(dj.id)
+      window.open(result.dashboard_url, '_blank')
+    } catch (error) {
+      console.error('Failed to get dashboard link:', error)
+    }
+  }
+
+  // Handle connect return URL parameters
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const connectParam = searchParams.get('connect')
+    if (connectParam === 'success' || connectParam === 'refresh') {
+      // Clean URL
+      window.history.replaceState({}, '', '/dj/dashboard')
+      // Refresh connect status
+      if (dj) {
+        fetchConnectStatus()
+      }
+    }
+  }, [dj, fetchConnectStatus])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -171,6 +239,53 @@ export default function DJDashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto p-4">
+        {/* Stripe Connect Status */}
+        {connectStatus && !connectStatus.charges_enabled && (
+          <div className={`rounded-lg p-4 mb-6 ${
+            connectStatus.connected
+              ? 'bg-orange-900/50 border border-orange-600'
+              : 'bg-yellow-900/50 border border-yellow-600'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold">
+                  {connectStatus.connected
+                    ? 'Complete your Stripe setup'
+                    : 'Set up Stripe to receive payouts'}
+                </p>
+                <p className="text-sm text-gray-400">
+                  {connectStatus.connected
+                    ? 'Finish setting up your account to start receiving payments'
+                    : 'Connect your bank account to receive money from song requests'}
+                </p>
+              </div>
+              <button
+                onClick={handleConnectOnboard}
+                disabled={connectLoading}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg font-semibold text-sm transition whitespace-nowrap"
+              >
+                {connectLoading ? 'Loading...' : connectStatus.connected ? 'Complete Setup' : 'Connect Stripe'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {connectStatus?.charges_enabled && (
+          <div className="bg-green-900/50 border border-green-600 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-green-400">✓</span>
+                <p className="font-semibold text-green-300">Stripe Connected</p>
+              </div>
+              <button
+                onClick={handleViewDashboard}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition"
+              >
+                View Stripe Dashboard
+              </button>
+            </div>
+          </div>
+        )}
         {/* No active session - Start Session UI */}
         {!activeSession && (
           <div className="bg-gray-900 rounded-lg p-6 text-center">

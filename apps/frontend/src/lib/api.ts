@@ -130,4 +130,23 @@ export const api = {
     request<{ success: boolean; request: Request }>(`/payments/confirm-payment/${paymentIntentId}`, {
       method: 'POST',
     }),
+
+  // Stripe Connect
+  connect: {
+    startOnboard: (djId: string, returnUrl: string, refreshUrl: string) =>
+      request<{ onboarding_url: string; account_id: string }>(`/connect/${djId}/onboard`, {
+        method: 'POST',
+        body: JSON.stringify({ return_url: returnUrl, refresh_url: refreshUrl }),
+      }),
+    getStatus: (djId: string) =>
+      request<{
+        connected: boolean
+        details_submitted: boolean
+        charges_enabled: boolean
+        payouts_enabled: boolean
+        account_id: string | null
+      }>(`/connect/${djId}/status`),
+    getDashboard: (djId: string) =>
+      request<{ dashboard_url: string }>(`/connect/${djId}/dashboard`),
+  },
 }

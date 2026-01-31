@@ -160,14 +160,18 @@ This document outlines the step-by-step implementation plan for building the DJ 
 - [x] Frontend Stripe Elements integration
 - [x] Payment flow working end-to-end
 
-### 4.2 Stripe Connect Setup
-- [ ] Implement DJ onboarding flow (Stripe Connect Express)
-- [ ] Store connected account IDs
-- [ ] Handle onboarding webhook events
+### 4.2 Stripe Connect Setup ✅
+- [x] Implement DJ onboarding flow (Stripe Connect Express)
+- [x] Create `/api/connect/{dj_id}/onboard` endpoint
+- [x] Create `/api/connect/{dj_id}/status` endpoint
+- [x] Create `/api/connect/{dj_id}/dashboard` endpoint
+- [x] Store connected account IDs
+- [x] Frontend Connect status UI in DJ Dashboard
+- [ ] Handle onboarding webhook events (optional for MVP)
 
-### 4.3 Payment Processing (Advanced)
-- [ ] Configure destination charges for DJ payout
-- [ ] Set up application fee splitting
+### 4.3 Payment Processing (Advanced) ✅
+- [x] Configure destination charges for DJ payout (in payments.py)
+- [x] Set up application fee splitting (15% platform fee)
 - [ ] Handle payment webhooks (`payment_intent.succeeded`, `failed`)
 
 ### 4.4 Refunds
