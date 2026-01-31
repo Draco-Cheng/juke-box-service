@@ -104,12 +104,12 @@ This document outlines the step-by-step implementation plan for building the DJ 
 - [ ] Show price breakdown
 - [ ] Form validation
 
-### 2.4 Payment Integration
-- [ ] Set up Stripe Elements
+### 2.4 Payment Integration ✅
+- [x] Set up Stripe Elements
 - [ ] Implement Payment Request API (Apple Pay / Google Pay)
-- [ ] Create payment intent on backend
-- [ ] Handle payment confirmation
-- [ ] Show success/error states
+- [x] Create payment intent on backend
+- [x] Handle payment confirmation
+- [x] Show success/error states
 
 ### 2.5 Request Status
 - [ ] Subscribe to request status changes (Supabase Realtime)
@@ -150,19 +150,27 @@ This document outlines the step-by-step implementation plan for building the DJ 
 ---
 
 ## Phase 4: Payments & Payouts
-**Status: PENDING**
+**Status: IN PROGRESS**
 
-### 4.1 Stripe Connect Setup
+### 4.1 Stripe Basic Integration ✅
+- [x] Set up Stripe API keys (backend)
+- [x] Create `/api/payments/config` endpoint (publishable key)
+- [x] Create `/api/payments/create-payment-intent` endpoint
+- [x] Create `/api/payments/confirm-payment/:id` endpoint
+- [x] Frontend Stripe Elements integration
+- [x] Payment flow working end-to-end
+
+### 4.2 Stripe Connect Setup
 - [ ] Implement DJ onboarding flow (Stripe Connect Express)
 - [ ] Store connected account IDs
 - [ ] Handle onboarding webhook events
 
-### 4.2 Payment Processing
-- [ ] Create payment intents with application fee
+### 4.3 Payment Processing (Advanced)
 - [ ] Configure destination charges for DJ payout
+- [ ] Set up application fee splitting
 - [ ] Handle payment webhooks (`payment_intent.succeeded`, `failed`)
 
-### 4.3 Refunds
+### 4.4 Refunds
 - [ ] Implement auto-refund for rejected requests
 - [ ] Handle refund webhook events
 
@@ -208,7 +216,7 @@ This document outlines the step-by-step implementation plan for building the DJ 
 | M0 | Project scaffolding | ✅ Done |
 | M1 | Backend APIs functional | ✅ Done |
 | M2 | Customer can submit request | ✅ Done |
-| M3 | Payments work | ⏳ Pending |
+| M3 | Payments work | 🔄 In Progress |
 | M4 | DJ can manage requests | ✅ Done |
 | M5 | Production ready | ⏳ Pending |
 
@@ -216,11 +224,14 @@ This document outlines the step-by-step implementation plan for building the DJ 
 
 ## Next Steps
 
-1. **Create Supabase project** and apply migration
-2. **Build backend API endpoints** for sessions/requests/venues
-3. **Connect frontend to backend** - fetch venue, display queue
-4. **Test core loop** - customer submits request, DJ sees it
-5. **Add Stripe payments**
+1. ~~**Create Supabase project** and apply migration~~ ✅
+2. ~~**Build backend API endpoints** for sessions/requests/venues~~ ✅
+3. ~~**Connect frontend to backend** - fetch venue, display queue~~ ✅
+4. ~~**Test core loop** - customer submits request, DJ sees it~~ ✅
+5. ~~**Add Stripe payments**~~ ✅ (Basic integration done)
+6. **Complete Stripe Connect** - DJ onboarding and payout splitting
+7. **Add Supabase Realtime** - Replace polling with WebSocket subscriptions
+8. **Integrate Spotify API** - Song search functionality
 
 ---
 

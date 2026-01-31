@@ -100,6 +100,7 @@ async def confirm_payment(payment_intent_id: str):
         supabase = get_supabase()
 
         # Create the request in database
+        # Note: payment_intent_id removed temporarily until Supabase schema is updated
         request_data = {
             "session_id": metadata.get("session_id"),
             "song_title": metadata.get("song_title"),
@@ -108,7 +109,6 @@ async def confirm_payment(payment_intent_id: str):
             "tier": metadata.get("tier", "normal"),
             "amount": payment_intent.amount,
             "status": "pending",
-            "payment_intent_id": payment_intent_id,
         }
 
         result = supabase.table("requests").insert(request_data).execute()
