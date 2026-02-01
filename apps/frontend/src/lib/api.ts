@@ -96,6 +96,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  getRequest: (requestId: string) => request<Request>(`/requests/${requestId}`),
   getSessionRequests: (sessionId: string) => request<Request[]>(`/requests/session/${sessionId}`),
   updateRequest: (requestId: string, status: Request['status']) =>
     request<Request>(`/requests/${requestId}`, {

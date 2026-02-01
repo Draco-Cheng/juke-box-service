@@ -37,7 +37,12 @@ This document outlines the step-by-step implementation plan for building the DJ 
 - [x] Design initial database schema
 - [x] Create migration file (`00001_initial_schema.sql`)
 - [x] Create Supabase project (cloud)
-- [ ] Set up Row Level Security (RLS) policies
+- [x] Set up Row Level Security (RLS) policies
+  - `venues`: Public read, authenticated write
+  - `djs`: Own profile only, service role for creation
+  - `sessions`: Active/paused visible, service role for management
+  - `requests`: Public read, service role for write
+  - `payments`: Service role only (highly restricted)
 - [x] Configure auth (email-based DJ login for MVP)
 
 ### 0.3 External Services
@@ -113,10 +118,15 @@ This document outlines the step-by-step implementation plan for building the DJ 
 - [x] Handle payment confirmation
 - [x] Show success/error states
 
-### 2.5 Request Status
-- [ ] Subscribe to request status changes (Supabase Realtime) - Customer side
-- [ ] Display status badge (pending → accepted → played) - Customer side
-- [ ] Show rejection reason if applicable
+### 2.5 Request Status ✅
+- [x] Subscribe to request status changes (Supabase Realtime) - Customer side
+  - Created `useMyRequestStatus` hook for single request tracking
+  - Stores customer's request IDs in localStorage
+- [x] Display status badge (pending → accepted → played) - Customer side
+  - "Your Request" card with realtime status updates
+  - Color-coded status: pending (yellow), accepted (blue), played (green), rejected (red)
+- [x] Show rejection reason if applicable
+  - Displays "Skipped - Refunded" with refund message
 
 ### 2.6 PWA Features
 - [x] Configure vite-plugin-pwa

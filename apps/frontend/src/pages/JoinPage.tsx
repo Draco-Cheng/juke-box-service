@@ -4,6 +4,28 @@ import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { api, Venue, Session, Request, SpotifyTrack } from '../lib/api'
 import SongSearch from '../components/SongSearch'
+import { useMyRequestStatus } from '../hooks/useMyRequestStatus'
+
+// LocalStorage key for storing customer's request IDs
+const MY_REQUESTS_KEY = 'my_requests'
+
+function getMyRequestIds(): string[] {
+  try {
+    const stored = localStorage.getItem(MY_REQUESTS_KEY)
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
+}
+
+function addMyRequestId(requestId: string) {
+  const ids = getMyRequestIds()
+  if (!ids.includes(requestId)) {
+    // Keep only the last 10 requests
+    const newIds = [requestId, ...ids].slice(0, 10)
+    localStorage.setItem(MY_REQUESTS_KEY, JSON.stringify(newIds))
+  }
+}
 
 const TIER_PRICES = {
   normal: 200,
@@ -111,6 +133,27 @@ export default function JoinPage() {
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  // My request tracking - track the most recent request from this customer
+  const [myRequestId, setMyRequestId] = useState<string | null>(() => {
+    const ids = getMyRequestIds()
+    return ids.length > 0 ? ids[0] : null
+  })
+
+  // Realtime tracking of my request status
+  const { request: myRequest } = useMyRequestStatus({
+    requestId: myRequestId,
+    onStatusChange: (updatedRequest) => {
+      // Optionally show notification when status changes
+      if (updatedRequest.status === 'accepted') {
+        console.log('Your request was accepted!')
+      } else if (updatedRequest.status === 'played') {
+        console.log('Your song is playing!')
+      } else if (updatedRequest.status === 'rejected') {
+        console.log('Your request was skipped. Refund initiated.')
+      }
+    },
+  })
+
   // Handle song selection from SongSearch
   const handleSongSelect = useCallback((track: SpotifyTrack | null, manualTitle?: string, manualArtist?: string) => {
     if (track) {
@@ -141,6 +184,7 @@ export default function JoinPage() {
     if (!venueSlug) return
 
     async function loadData() {
+      if (!venueSlug) return
       try {
         setLoading(true)
         const venueData = await api.getVenue(venueSlug)
@@ -190,7 +234,20 @@ export default function JoinPage() {
     }
   }
 
-  function handlePaymentSuccess() {
+  async function handlePaymentSuccess() {
+    // Get the request that was just created
+    if (paymentIntentId) {
+      try {
+        const result = await api.confirmPayment(paymentIntentId)
+        if (result.request?.id) {
+          addMyRequestId(result.request.id)
+          setMyRequestId(result.request.id)
+        }
+      } catch {
+        // Already confirmed, try to get from requests list
+      }
+    }
+
     setShowPayment(false)
     setClientSecret(null)
     setPaymentIntentId(null)
@@ -260,7 +317,48 @@ export default function JoinPage() {
                 </Elements>
               </div>
             ) : (
-              /* Request Form */
+              <>
+              {/* My Request Status */}
+              {myRequest && (
+                <div className={`rounded-lg p-4 shadow-sm mb-4 ${
+                  myRequest.status === 'played'
+                    ? 'bg-green-50 border border-green-200'
+                    : myRequest.status === 'rejected'
+                      ? 'bg-red-50 border border-red-200'
+                      : myRequest.status === 'accepted'
+                        ? 'bg-blue-50 border border-blue-200'
+                        : 'bg-yellow-50 border border-yellow-200'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="font-semibold">Your Request</h2>
+                    <span className={`text-xs px-2 py-1 rounded font-medium ${
+                      myRequest.status === 'played'
+                        ? 'bg-green-200 text-green-800'
+                        : myRequest.status === 'rejected'
+                          ? 'bg-red-200 text-red-800'
+                          : myRequest.status === 'accepted'
+                            ? 'bg-blue-200 text-blue-800'
+                            : 'bg-yellow-200 text-yellow-800'
+                    }`}>
+                      {myRequest.status === 'pending' && 'Waiting for DJ'}
+                      {myRequest.status === 'accepted' && 'Coming up!'}
+                      {myRequest.status === 'played' && 'Played!'}
+                      {myRequest.status === 'rejected' && 'Skipped - Refunded'}
+                    </span>
+                  </div>
+                  <p className="font-medium">{myRequest.song_title}</p>
+                  {myRequest.song_artist && (
+                    <p className="text-sm text-gray-600">{myRequest.song_artist}</p>
+                  )}
+                  {myRequest.status === 'rejected' && (
+                    <p className="text-sm text-red-600 mt-2">
+                      Your payment has been refunded.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Request Form */}
               <form onSubmit={handleSubmit} className="bg-white rounded-lg p-4 shadow-sm mb-4">
                 <h2 className="font-semibold mb-3">Request a Song</h2>
 
@@ -304,6 +402,7 @@ export default function JoinPage() {
                   {submitting ? 'Loading...' : `Pay €${TIER_PRICES[tier] / 100} & Submit`}
                 </button>
               </form>
+              </>
             )}
 
             {/* Request Queue */}
