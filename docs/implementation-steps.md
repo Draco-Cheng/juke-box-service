@@ -36,13 +36,13 @@ This document outlines the step-by-step implementation plan for building the DJ 
 ### 0.2 Supabase Setup
 - [x] Design initial database schema
 - [x] Create migration file (`00001_initial_schema.sql`)
-- [ ] Create Supabase project (cloud)
+- [x] Create Supabase project (cloud)
 - [ ] Set up Row Level Security (RLS) policies
-- [ ] Configure auth (magic link for DJs)
+- [x] Configure auth (email-based DJ login for MVP)
 
 ### 0.3 External Services
-- [ ] Create Stripe account + Stripe Connect
-- [ ] Register Spotify Developer app
+- [x] Create Stripe account + Stripe Connect
+- [x] Register Spotify Developer app
 - [ ] Set up hosting (Vercel/Railway)
 
 ---
@@ -98,13 +98,13 @@ This document outlines the step-by-step implementation plan for building the DJ 
 - [x] Display search results (track, artist, album art)
 - [x] Handle "manual input" fallback
 
-### 2.3 Request Submission
-- [ ] Build request form
-  - Song selection
+### 2.3 Request Submission ✅
+- [x] Build request form
+  - Song selection (SongSearch component)
   - Tier selection (Normal €2 / Priority €5 / ASAP €10)
   - Optional message input
-- [ ] Show price breakdown
-- [ ] Form validation
+- [x] Show price breakdown
+- [x] Form validation
 
 ### 2.4 Payment Integration ✅
 - [x] Set up Stripe Elements
@@ -114,8 +114,8 @@ This document outlines the step-by-step implementation plan for building the DJ 
 - [x] Show success/error states
 
 ### 2.5 Request Status
-- [ ] Subscribe to request status changes (Supabase Realtime)
-- [ ] Display status badge (pending → accepted → played)
+- [ ] Subscribe to request status changes (Supabase Realtime) - Customer side
+- [ ] Display status badge (pending → accepted → played) - Customer side
 - [ ] Show rejection reason if applicable
 
 ### 2.6 PWA Features
@@ -180,9 +180,13 @@ This document outlines the step-by-step implementation plan for building the DJ 
   - Idempotency check to prevent duplicate processing
   - Fallback: `/confirm-payment` endpoint still works without webhook
 
-### 4.4 Refunds
-- [ ] Implement auto-refund for rejected requests
-- [ ] Handle refund webhook events
+### 4.4 Refunds ✅
+- [x] Implement auto-refund for rejected requests
+  - Triggered automatically when DJ rejects a request
+  - Uses `stripe.Refund.create()` with the payment_intent
+- [x] Handle refund webhook events
+  - Added `charge.refunded` handler in webhooks.py
+  - Updates payment record status to "refunded"
 
 ---
 

@@ -2,6 +2,10 @@ from fastapi import APIRouter, HTTPException
 from typing import List
 from models import Request, RequestCreate, RequestUpdate
 from database import get_supabase
+import stripe
+import os
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter(prefix="/requests", tags=["requests"])
 
@@ -34,11 +38,33 @@ async def update_request(request_id: str, update: RequestUpdate):
     try:
         supabase = get_supabase()
 
+        # Get current request to check for stripe_payment_id
+        current = (
+            supabase.table("requests")
+            .select("*")
+            .eq("id", request_id)
+            .single()
+            .execute()
+        )
+
+        if not current.data:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        current_request = current.data
+
         from datetime import datetime
         update_data = {
             "status": update.status.value,
             "updated_at": datetime.utcnow().isoformat()
         }
+
+        # If rejecting, trigger refund
+        if update.status.value == "rejected" and current_request.get("stripe_payment_id"):
+            try:
+                await process_refund(current_request["stripe_payment_id"])
+            except Exception as refund_error:
+                # Log but don't fail the rejection
+                print(f"Refund failed for {request_id}: {refund_error}")
 
         result = (
             supabase.table("requests")
@@ -55,6 +81,19 @@ async def update_request(request_id: str, update: RequestUpdate):
         raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+async def process_refund(stripe_payment_id: str):
+    """Process a full refund for a payment"""
+    try:
+        # Create refund for the payment intent
+        refund = stripe.Refund.create(
+            payment_intent=stripe_payment_id,
+            reason="requested_by_customer"  # DJ rejected = customer didn't get what they paid for
+        )
+        return refund
+    except stripe.error.StripeError as e:
+        raise Exception(f"Stripe refund error: {str(e)}")
 
 
 @router.get("/session/{session_id}", response_model=List[Request])

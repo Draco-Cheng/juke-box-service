@@ -34,6 +34,8 @@ async def stripe_webhook(request: Request):
         await handle_payment_succeeded(event["data"]["object"])
     elif event_type == "payment_intent.payment_failed":
         await handle_payment_failed(event["data"]["object"])
+    elif event_type == "charge.refunded":
+        await handle_charge_refunded(event["data"]["object"])
 
     return {"status": "ok"}
 
@@ -99,3 +101,19 @@ async def handle_payment_failed(payment_intent: dict):
     print(f"Payment failed: {stripe_payment_id}")
     print(f"Session: {metadata.get('session_id')}")
     print(f"Song: {metadata.get('song_title')}")
+
+
+async def handle_charge_refunded(charge: dict):
+    """Handle refunded charge - update payment record"""
+    supabase = get_supabase()
+    payment_intent_id = charge.get("payment_intent")
+
+    if not payment_intent_id:
+        return
+
+    # Update payment record status to refunded
+    supabase.table("payments").update({
+        "status": "refunded"
+    }).eq("stripe_payment_id", payment_intent_id).execute()
+
+    print(f"Refund processed for payment: {payment_intent_id}")
