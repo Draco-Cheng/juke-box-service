@@ -101,8 +101,18 @@ async def confirm_payment(payment_intent_id: str):
         metadata = payment_intent.metadata
         supabase = get_supabase()
 
-        # Create the request in database
-        # Note: payment_intent_id removed temporarily until Supabase schema is updated
+        # Check if already processed by webhook (idempotency)
+        existing = (
+            supabase.table("requests")
+            .select("id")
+            .eq("stripe_payment_id", payment_intent.id)
+            .execute()
+        )
+        if existing.data:
+            # Already processed by webhook, return existing request
+            return {"success": True, "request": existing.data[0]}
+
+        # Create the request in database (fallback if webhook hasn't processed yet)
         request_data = {
             "session_id": metadata.get("session_id"),
             "song_title": metadata.get("song_title"),
@@ -112,6 +122,7 @@ async def confirm_payment(payment_intent_id: str):
             "tier": metadata.get("tier", "normal"),
             "amount": payment_intent.amount,
             "status": "pending",
+            "stripe_payment_id": payment_intent.id,
         }
 
         result = supabase.table("requests").insert(request_data).execute()
