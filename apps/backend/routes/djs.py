@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
-from models import DJ, DJCreate
+from models import DJ, DJCreate, Venue, VenueCreate, VenueSettings
 from database import get_supabase
 
 router = APIRouter(prefix="/djs", tags=["djs"])
@@ -96,5 +96,42 @@ async def get_dj_active_session(dj_id: str):
         if result.data:
             return result.data[0]
         return None
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{dj_id}/venues", response_model=Venue)
+async def create_dj_venue(dj_id: str, venue: VenueCreate):
+    """Create a new venue for a DJ"""
+    try:
+        supabase = get_supabase()
+
+        # Verify DJ exists
+        dj_result = supabase.table("djs").select("id").eq("id", dj_id).single().execute()
+        if not dj_result.data:
+            raise HTTPException(status_code=404, detail="DJ not found")
+
+        # Check if slug is already taken
+        slug_check = supabase.table("venues").select("id").eq("slug", venue.slug).execute()
+        if slug_check.data:
+            raise HTTPException(status_code=400, detail="Venue slug already exists")
+
+        # Create venue with default settings
+        venue_data = venue.model_dump()
+
+        result = supabase.table("venues").insert(venue_data).execute()
+        new_venue = result.data[0]
+
+        # Create an initial session to associate DJ with venue
+        # This ensures the venue shows up in the DJ's venue list
+        supabase.table("sessions").insert({
+            "venue_id": new_venue["id"],
+            "dj_id": dj_id,
+            "status": "ended"  # Create as ended so it doesn't interfere
+        }).execute()
+
+        return new_venue
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

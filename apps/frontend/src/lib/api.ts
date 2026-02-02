@@ -17,13 +17,43 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 // Types
+export interface VenuePricing {
+  normal: number  // cents
+  priority: number  // cents
+  asap: number  // cents
+  currency: string
+}
+
+export interface VenueSettings {
+  pricing: VenuePricing
+}
+
 export interface Venue {
   id: string
   name: string
   slug: string
-  settings: Record<string, unknown>
+  settings: VenueSettings
   created_at: string
   updated_at: string
+}
+
+export interface VenueCreate {
+  name: string
+  slug: string
+  settings?: VenueSettings
+}
+
+export interface VenueUpdate {
+  name?: string
+  settings?: VenueSettings
+}
+
+// Default pricing values
+export const DEFAULT_PRICING: VenuePricing = {
+  normal: 200,
+  priority: 500,
+  asap: 1000,
+  currency: 'EUR'
 }
 
 export interface Session {
@@ -89,6 +119,12 @@ export const api = {
   // Venues
   getVenue: (slug: string) => request<Venue>(`/venues/${slug}`),
   getActiveSession: (slug: string) => request<Session | null>(`/venues/${slug}/active-session`),
+  updateVenue: (venueId: string, data: VenueUpdate) =>
+    request<Venue>(`/venues/${venueId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  getVenueQR: (venueId: string) => `${API_BASE}/venues/${venueId}/qr`,
 
   // Requests
   createRequest: (data: RequestCreate) =>
@@ -109,6 +145,11 @@ export const api = {
   getDJ: (djId: string) => request<DJ>(`/djs/${djId}`),
   getDJVenues: (djId: string) => request<Venue[]>(`/djs/${djId}/venues`),
   getDJActiveSession: (djId: string) => request<SessionWithVenue | null>(`/djs/${djId}/active-session`),
+  createDJVenue: (djId: string, venue: VenueCreate) =>
+    request<Venue>(`/djs/${djId}/venues`, {
+      method: 'POST',
+      body: JSON.stringify(venue),
+    }),
 
   // Sessions
   createSession: (venueId: string, djId: string) =>

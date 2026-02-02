@@ -1,6 +1,9 @@
 from .schemas import (
     Venue,
     VenueCreate,
+    VenueUpdate,
+    VenueSettings,
+    VenuePricing,
     DJ,
     DJCreate,
     Session,
@@ -17,6 +20,9 @@ from .schemas import (
 __all__ = [
     "Venue",
     "VenueCreate",
+    "VenueUpdate",
+    "VenueSettings",
+    "VenuePricing",
     "DJ",
     "DJCreate",
     "Session",

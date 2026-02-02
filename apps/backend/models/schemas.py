@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
 from typing import Optional
@@ -23,15 +23,32 @@ class SessionStatus(str, Enum):
     ENDED = "ended"
 
 
+# Venue Settings
+class VenuePricing(BaseModel):
+    normal: int = Field(default=200, description="Price in cents for normal tier")
+    priority: int = Field(default=500, description="Price in cents for priority tier")
+    asap: int = Field(default=1000, description="Price in cents for ASAP tier")
+    currency: str = Field(default="EUR", description="Currency code")
+
+
+class VenueSettings(BaseModel):
+    pricing: VenuePricing = Field(default_factory=VenuePricing)
+
+
 # Venue
 class VenueBase(BaseModel):
     name: str
     slug: str
-    settings: dict = {}
+    settings: VenueSettings = Field(default_factory=VenueSettings)
 
 
 class VenueCreate(VenueBase):
     pass
+
+
+class VenueUpdate(BaseModel):
+    name: Optional[str] = None
+    settings: Optional[VenueSettings] = None
 
 
 class Venue(VenueBase):

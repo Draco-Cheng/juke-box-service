@@ -201,16 +201,16 @@ This document outlines the step-by-step implementation plan for building the DJ 
 ---
 
 ## Phase 5: Venue Features
-**Status: PENDING**
+**Status: IN PROGRESS**
 
-### 5.1 Venue Management
-- [ ] Venue registration flow
-- [ ] Pricing configuration
-- [ ] Content filters (explicit, blocked artists)
+### 5.1 Venue Management ✅
+- [x] Venue registration flow (DJ can create venues)
+- [x] Pricing configuration (per-venue pricing for normal/priority/ASAP tiers)
+- [ ] Content filters (explicit, blocked artists) - Future enhancement
 
-### 5.2 QR Code Generation
-- [ ] Generate unique QR codes
-- [ ] Downloadable assets (print-ready)
+### 5.2 QR Code Generation ✅
+- [x] Generate unique QR codes (SVG format)
+- [x] Downloadable assets (opens in new tab for save/print)
 
 ---
 
@@ -242,7 +242,7 @@ This document outlines the step-by-step implementation plan for building the DJ 
 | M2 | Customer can submit request | ✅ Done |
 | M3 | Payments work | ✅ Done |
 | M4 | DJ can manage requests | ✅ Done |
-| M5 | Production ready | ⏳ Pending |
+| M5 | Production ready | ⏳ In Progress |
 
 ---
 

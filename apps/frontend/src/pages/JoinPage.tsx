@@ -2,7 +2,7 @@ import { useParams } from 'react-router-dom'
 import { useEffect, useState, useCallback } from 'react'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { api, Venue, Session, Request, SpotifyTrack } from '../lib/api'
+import { api, Venue, Session, Request, SpotifyTrack, VenuePricing, DEFAULT_PRICING } from '../lib/api'
 import SongSearch from '../components/SongSearch'
 import { useMyRequestStatus } from '../hooks/useMyRequestStatus'
 
@@ -27,10 +27,15 @@ function addMyRequestId(requestId: string) {
   }
 }
 
-const TIER_PRICES = {
-  normal: 200,
-  priority: 500,
-  asap: 1000,
+// Helper to get pricing from venue with fallback to defaults
+function getVenuePricing(venue: Venue | null): VenuePricing {
+  if (!venue?.settings?.pricing) {
+    return DEFAULT_PRICING
+  }
+  return {
+    ...DEFAULT_PRICING,
+    ...venue.settings.pricing
+  }
 }
 
 // Payment Form Component
@@ -221,7 +226,7 @@ export default function JoinPage() {
         spotify_track_id: spotifyTrackId || undefined,
         tier,
         message: message.trim() || undefined,
-        amount: TIER_PRICES[tier],
+        amount: getVenuePricing(venue)[tier],
       })
 
       setClientSecret(client_secret)
@@ -368,22 +373,27 @@ export default function JoinPage() {
 
                 {/* Tier Selection */}
                 <div className="flex gap-2 mb-3">
-                  {(['normal', 'priority', 'asap'] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setTier(t)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                        tier === t
-                          ? 'bg-black text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {t === 'normal' && 'Normal €2'}
-                      {t === 'priority' && 'Priority €5'}
-                      {t === 'asap' && 'ASAP €10'}
-                    </button>
-                  ))}
+                  {(['normal', 'priority', 'asap'] as const).map((t) => {
+                    const pricing = getVenuePricing(venue)
+                    const price = pricing[t]
+                    const currency = pricing.currency === 'EUR' ? '€' : pricing.currency
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTier(t)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                          tier === t
+                            ? 'bg-black text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {t === 'normal' && `Normal ${currency}${(price / 100).toFixed(0)}`}
+                        {t === 'priority' && `Priority ${currency}${(price / 100).toFixed(0)}`}
+                        {t === 'asap' && `ASAP ${currency}${(price / 100).toFixed(0)}`}
+                      </button>
+                    )
+                  })}
                 </div>
 
                 <textarea
@@ -399,7 +409,7 @@ export default function JoinPage() {
                   disabled={submitting || !songTitle.trim()}
                   className="w-full py-3 bg-black text-white rounded-lg font-medium disabled:opacity-50"
                 >
-                  {submitting ? 'Loading...' : `Pay €${TIER_PRICES[tier] / 100} & Submit`}
+                  {submitting ? 'Loading...' : `Pay €${(getVenuePricing(venue)[tier] / 100).toFixed(0)} & Submit`}
                 </button>
               </form>
               </>
