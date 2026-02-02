@@ -1,7 +1,7 @@
 service:
   type: ClusterIP
   port: 80
-  targetPort: 3000
+  targetPort: 80
 
 resources:
   requests:
@@ -11,5 +11,5 @@ resources:
     memory: "128Mi"
     cpu: "100m"
 
-env:
-  BACKEND_URL: "http://backend-service:8000"
+# Note: VITE_API_URL is baked into the frontend at build time
+# For production, set VITE_API_URL=/api in the CI/CD build step

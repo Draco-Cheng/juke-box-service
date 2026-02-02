@@ -6,6 +6,11 @@ ingress:
   className: traefik
   rules:
     - paths:
+        - path: /api
+          pathType: Prefix
+          serviceName: backend-service
+          servicePort: 8000
         - path: /
+          pathType: Prefix
           serviceName: frontend-service
           servicePort: 80

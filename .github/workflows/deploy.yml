@@ -36,6 +36,11 @@ jobs:
       K8S_CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY }}
       K8S_SERVER: ${{ secrets.K8S_SERVER }}
 
+      # === Frontend build-time env (baked into static files) ===
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+
       # === GitHub context ===
       REPO_NAME: ${{ github.event.repository.name }}
       BRANCH_NAME: ${{ github.ref_name }}

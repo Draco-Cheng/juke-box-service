@@ -6,7 +6,6 @@
   "scripts": {},
   "private": true,
   "devDependencies": {
-    "supabase": "^2.23.0",
     "@nx/js": "21.4.0",
     "@nx/node": "21.4.0",
     "@nx/vite": "21.4.0",
@@ -16,6 +15,7 @@
     "@swc/helpers": "~0.5.11",
     "@types/node": "^20",
     "nx": "21.4.0",
+    "supabase": "^2.23.0",
     "swc-loader": "0.1.15",
     "tslib": "^2.3.0",
     "typescript": "~5.8.2"
@@ -23,6 +23,5 @@
   "workspaces": [
     "packages/*",
     "apps/*"
-  ],
-  "dependencies": {}
+  ]
 }
