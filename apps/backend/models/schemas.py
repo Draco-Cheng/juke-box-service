@@ -31,8 +31,15 @@ class VenuePricing(BaseModel):
     currency: str = Field(default="EUR", description="Currency code")
 
 
+class ContentFilters(BaseModel):
+    enabled: bool = Field(default=False, description="Whether content filters are active")
+    block_explicit: bool = Field(default=False, description="Block songs marked as explicit")
+    blocked_artists: list[str] = Field(default_factory=list, description="List of blocked artist names")
+
+
 class VenueSettings(BaseModel):
     pricing: VenuePricing = Field(default_factory=VenuePricing)
+    content_filters: ContentFilters = Field(default_factory=ContentFilters)
 
 
 # Venue

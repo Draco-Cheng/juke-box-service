@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, DJ, Venue, Request, SessionWithVenue, DEFAULT_PRICING } from '../../lib/api'
+import { api, DJ, Venue, Request, SessionWithVenue, DEFAULT_PRICING, DEFAULT_CONTENT_FILTERS, ContentFilters } from '../../lib/api'
 import { useRequestsRealtime } from '../../hooks/useRequestsRealtime'
 
 // Helper to get pricing from venue settings with defaults
@@ -52,6 +52,8 @@ export default function DJDashboardPage() {
   const [newVenueName, setNewVenueName] = useState('')
   const [newVenueSlug, setNewVenueSlug] = useState('')
   const [editPricing, setEditPricing] = useState({ normal: 200, priority: 500, asap: 1000 })
+  const [editContentFilters, setEditContentFilters] = useState<ContentFilters>(DEFAULT_CONTENT_FILTERS)
+  const [blockedArtistsInput, setBlockedArtistsInput] = useState('')
   const [venueLoading, setVenueLoading] = useState(false)
 
   // Realtime subscription for requests
@@ -196,6 +198,9 @@ export default function DJDashboardPage() {
       priority: pricing.priority,
       asap: pricing.asap
     })
+    const filters = venue.settings?.content_filters ?? DEFAULT_CONTENT_FILTERS
+    setEditContentFilters(filters)
+    setBlockedArtistsInput(filters.blocked_artists.join(', '))
   }
 
   const handleSaveVenue = async () => {
@@ -203,11 +208,21 @@ export default function DJDashboardPage() {
 
     setVenueLoading(true)
     try {
+      // Parse blocked artists from comma-separated input
+      const blockedArtists = blockedArtistsInput
+        .split(',')
+        .map(a => a.trim())
+        .filter(a => a.length > 0)
+
       const updated = await api.updateVenue(editingVenue.id, {
         settings: {
           pricing: {
             ...editPricing,
             currency: 'EUR'
+          },
+          content_filters: {
+            ...editContentFilters,
+            blocked_artists: blockedArtists
           }
         }
       })
@@ -419,7 +434,7 @@ export default function DJDashboardPage() {
                                 onClick={() => handleEditVenue(venue)}
                                 className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition"
                               >
-                                Edit Pricing
+                                Settings
                               </button>
                               <button
                                 onClick={() => handleDownloadQR(venue)}
@@ -494,49 +509,97 @@ export default function DJDashboardPage() {
           </div>
         )}
 
-        {/* Edit Pricing Modal */}
+        {/* Edit Venue Settings Modal */}
         {editingVenue && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-            <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-xl font-semibold mb-4">Edit Pricing - {editingVenue.name}</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Normal Tier (cents)</label>
-                  <input
-                    type="number"
-                    value={editPricing.normal}
-                    onChange={(e) => setEditPricing({ ...editPricing, normal: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-                    min="0"
-                    step="50"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">= €{(editPricing.normal / 100).toFixed(2)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Priority Tier (cents)</label>
-                  <input
-                    type="number"
-                    value={editPricing.priority}
-                    onChange={(e) => setEditPricing({ ...editPricing, priority: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-                    min="0"
-                    step="50"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">= €{(editPricing.priority / 100).toFixed(2)}</p>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">ASAP Tier (cents)</label>
-                  <input
-                    type="number"
-                    value={editPricing.asap}
-                    onChange={(e) => setEditPricing({ ...editPricing, asap: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-                    min="0"
-                    step="50"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">= €{(editPricing.asap / 100).toFixed(2)}</p>
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md my-8">
+              <h2 className="text-xl font-semibold mb-4">Venue Settings - {editingVenue.name}</h2>
+
+              {/* Pricing Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Pricing</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Normal Tier (cents)</label>
+                    <input
+                      type="number"
+                      value={editPricing.normal}
+                      onChange={(e) => setEditPricing({ ...editPricing, normal: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                      min="0"
+                      step="50"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">= €{(editPricing.normal / 100).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">Priority Tier (cents)</label>
+                    <input
+                      type="number"
+                      value={editPricing.priority}
+                      onChange={(e) => setEditPricing({ ...editPricing, priority: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                      min="0"
+                      step="50"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">= €{(editPricing.priority / 100).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">ASAP Tier (cents)</label>
+                    <input
+                      type="number"
+                      value={editPricing.asap}
+                      onChange={(e) => setEditPricing({ ...editPricing, asap: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
+                      min="0"
+                      step="50"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">= €{(editPricing.asap / 100).toFixed(2)}</p>
+                  </div>
                 </div>
               </div>
+
+              {/* Content Filters Section */}
+              <div className="border-t border-gray-700 pt-6">
+                <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Content Filters</h3>
+                <div className="space-y-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editContentFilters.enabled}
+                      onChange={(e) => setEditContentFilters({ ...editContentFilters, enabled: e.target.checked })}
+                      className="w-5 h-5 rounded bg-gray-800 border-gray-600 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-gray-300">Enable content filters</span>
+                  </label>
+
+                  {editContentFilters.enabled && (
+                    <div className="pl-8 space-y-4">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editContentFilters.block_explicit}
+                          onChange={(e) => setEditContentFilters({ ...editContentFilters, block_explicit: e.target.checked })}
+                          className="w-5 h-5 rounded bg-gray-800 border-gray-600 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-gray-300">Block explicit content</span>
+                      </label>
+
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Blocked artists</label>
+                        <textarea
+                          value={blockedArtistsInput}
+                          onChange={(e) => setBlockedArtistsInput(e.target.value)}
+                          placeholder="Artist 1, Artist 2, Artist 3..."
+                          className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg resize-none"
+                          rows={2}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Comma-separated list of artist names to block</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="flex gap-2 mt-6">
                 <button
                   onClick={() => setEditingVenue(null)}

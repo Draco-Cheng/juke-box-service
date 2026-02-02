@@ -24,8 +24,15 @@ export interface VenuePricing {
   currency: string
 }
 
+export interface ContentFilters {
+  enabled: boolean
+  block_explicit: boolean
+  blocked_artists: string[]
+}
+
 export interface VenueSettings {
   pricing: VenuePricing
+  content_filters?: ContentFilters
 }
 
 export interface Venue {
@@ -54,6 +61,13 @@ export const DEFAULT_PRICING: VenuePricing = {
   priority: 500,
   asap: 1000,
   currency: 'EUR'
+}
+
+// Default content filters
+export const DEFAULT_CONTENT_FILTERS: ContentFilters = {
+  enabled: false,
+  block_explicit: false,
+  blocked_artists: []
 }
 
 export interface Session {
@@ -108,6 +122,7 @@ export interface SpotifyTrack {
   album: string
   image_url: string | null
   duration_ms: number
+  explicit: boolean
 }
 
 export interface SessionWithVenue extends Session {
@@ -170,6 +185,7 @@ export const api = {
     song_title: string
     song_artist?: string
     spotify_track_id?: string
+    explicit?: boolean
     message?: string
     tier: 'normal' | 'priority' | 'asap'
     amount: number

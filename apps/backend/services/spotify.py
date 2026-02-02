@@ -13,6 +13,7 @@ class SpotifyTrack(BaseModel):
     album: str
     image_url: Optional[str] = None
     duration_ms: int
+    explicit: bool = False
 
 
 class SpotifyService:
@@ -90,6 +91,7 @@ class SpotifyService:
                 album=item.get("album", {}).get("name", ""),
                 image_url=image_url,
                 duration_ms=item.get("duration_ms", 0),
+                explicit=item.get("explicit", False),
             ))
 
         return tracks
@@ -122,6 +124,7 @@ class SpotifyService:
             album=item.get("album", {}).get("name", ""),
             image_url=image_url,
             duration_ms=item.get("duration_ms", 0),
+            explicit=item.get("explicit", False),
         )
 
 

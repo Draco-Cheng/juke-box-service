@@ -134,9 +134,11 @@ export default function JoinPage() {
   const [songTitle, setSongTitle] = useState('')
   const [songArtist, setSongArtist] = useState('')
   const [spotifyTrackId, setSpotifyTrackId] = useState<string | null>(null)
+  const [songExplicit, setSongExplicit] = useState(false)
   const [tier, setTier] = useState<'normal' | 'priority' | 'asap'>('normal')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   // My request tracking - track the most recent request from this customer
   const [myRequestId, setMyRequestId] = useState<string | null>(() => {
@@ -161,18 +163,22 @@ export default function JoinPage() {
 
   // Handle song selection from SongSearch
   const handleSongSelect = useCallback((track: SpotifyTrack | null, manualTitle?: string, manualArtist?: string) => {
+    setSubmitError(null)
     if (track) {
       setSongTitle(track.name)
       setSongArtist(track.artists.join(', '))
       setSpotifyTrackId(track.id)
+      setSongExplicit(track.explicit ?? false)
     } else if (manualTitle) {
       setSongTitle(manualTitle)
       setSongArtist(manualArtist || '')
       setSpotifyTrackId(null)
+      setSongExplicit(false)
     } else {
       setSongTitle('')
       setSongArtist('')
       setSpotifyTrackId(null)
+      setSongExplicit(false)
     }
   }, [])
 
@@ -217,6 +223,7 @@ export default function JoinPage() {
     if (!session || !songTitle.trim()) return
 
     setSubmitting(true)
+    setSubmitError(null)
     try {
       // Create PaymentIntent
       const { client_secret, payment_intent_id } = await api.createPaymentIntent({
@@ -224,6 +231,7 @@ export default function JoinPage() {
         song_title: songTitle.trim(),
         song_artist: songArtist.trim() || undefined,
         spotify_track_id: spotifyTrackId || undefined,
+        explicit: songExplicit,
         tier,
         message: message.trim() || undefined,
         amount: getVenuePricing(venue)[tier],
@@ -233,7 +241,8 @@ export default function JoinPage() {
       setPaymentIntentId(payment_intent_id)
       setShowPayment(true)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create payment')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create payment'
+      setSubmitError(errorMessage)
     } finally {
       setSubmitting(false)
     }
@@ -403,6 +412,12 @@ export default function JoinPage() {
                   className="w-full px-3 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-black resize-none"
                   rows={2}
                 />
+
+                {submitError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
+                    <p className="text-red-700 text-sm">{submitError}</p>
+                  </div>
+                )}
 
                 <button
                   type="submit"

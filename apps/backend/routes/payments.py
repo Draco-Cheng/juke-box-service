@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from database import get_supabase
+from services.spotify import spotify_service
 import stripe
 import os
 
@@ -17,6 +18,7 @@ class CreatePaymentIntentRequest(BaseModel):
     song_title: str
     song_artist: str | None = None
     spotify_track_id: str | None = None
+    explicit: bool = False
     message: str | None = None
     tier: str = "normal"
     amount: int  # in cents
@@ -27,16 +29,54 @@ class PaymentIntentResponse(BaseModel):
     payment_intent_id: str
 
 
+async def validate_content_filters(
+    request: CreatePaymentIntentRequest,
+    venue_settings: dict,
+) -> tuple[bool, str | None]:
+    """
+    Validate song against venue content filters.
+    Returns (is_valid, error_message).
+    """
+    content_filters = venue_settings.get("content_filters", {})
+
+    if not content_filters.get("enabled", False):
+        return True, None
+
+    # Check explicit content
+    if content_filters.get("block_explicit", False):
+        # Use explicit flag from request (passed from frontend)
+        is_explicit = request.explicit
+
+        # Double-check with Spotify API if track ID is provided
+        if request.spotify_track_id and spotify_service.is_configured:
+            track = await spotify_service.get_track(request.spotify_track_id)
+            if track:
+                is_explicit = track.explicit
+
+        if is_explicit:
+            return False, "This song contains explicit content and is not allowed at this venue"
+
+    # Check blocked artists
+    blocked_artists = content_filters.get("blocked_artists", [])
+    if blocked_artists and request.song_artist:
+        artist_lower = request.song_artist.lower()
+        for blocked in blocked_artists:
+            if blocked.lower() in artist_lower:
+                return False, f"Songs by this artist are not allowed at this venue"
+
+    return True, None
+
+
 @router.post("/create-payment-intent", response_model=PaymentIntentResponse)
 async def create_payment_intent(request: CreatePaymentIntentRequest):
     """Create a Stripe PaymentIntent for a song request"""
     try:
         supabase = get_supabase()
 
-        # Get session to find the DJ
+        # Get session with venue info to check content filters
         session_result = (
             supabase.table("sessions")
-            .select("*, djs(*)")
+            .select("*, djs(*), venues(*)")
             .eq("id", request.session_id)
             .single()
             .execute()
@@ -47,6 +87,15 @@ async def create_payment_intent(request: CreatePaymentIntentRequest):
 
         session = session_result.data
         dj = session.get("djs")
+        venue = session.get("venues")
+
+        # Validate content filters
+        if venue and venue.get("settings"):
+            is_valid, error_message = await validate_content_filters(
+                request, venue["settings"]
+            )
+            if not is_valid:
+                raise HTTPException(status_code=400, detail=error_message)
 
         # Check if DJ has Stripe account connected
         stripe_account_id = dj.get("stripe_account_id") if dj else None
