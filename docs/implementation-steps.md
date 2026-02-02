@@ -14,6 +14,9 @@ This document outlines the step-by-step implementation plan for building the DJ 
 | Real-time | Supabase Realtime | Built-in WebSocket subscriptions |
 | Payments | Stripe + Stripe Connect | Multi-party payouts |
 | Song Search | Spotify Web API | Rich metadata, free tier available |
+| Deployment | Kubernetes + Helm | Scalable, cloud-agnostic |
+| CI/CD | GitHub Actions + Nx | Automated builds, semantic versioning |
+| Ingress | Traefik | Flexible routing, easy TLS |
 
 ---
 
@@ -48,7 +51,7 @@ This document outlines the step-by-step implementation plan for building the DJ 
 ### 0.3 External Services
 - [x] Create Stripe account + Stripe Connect
 - [x] Register Spotify Developer app
-- [ ] Set up hosting (Vercel/Railway)
+- [x] Set up deployment infrastructure (Kubernetes + Helm)
 
 ---
 
@@ -217,10 +220,43 @@ This document outlines the step-by-step implementation plan for building the DJ 
 
 ---
 
-## Phase 6: Polish & Launch
+## Phase 6: Deployment & Infrastructure ✅
+**Status: COMPLETE**
+
+### 6.0 Kubernetes Deployment
+- [x] Create Dockerfiles (multi-stage builds)
+  - `apps/frontend/Dockerfile` - Node build → Nginx production
+  - `apps/backend/Dockerfile` - Python FastAPI + Uvicorn
+- [x] Create Helm Charts
+  - `helm/` - Infrastructure (namespace, ingress)
+  - `apps/frontend/helm/` - Frontend deployment & service
+  - `apps/backend/helm/` - Backend deployment & service
+- [x] Configure Ingress (Traefik)
+  - Route `/api` → backend-service:8000
+  - Route `/` → frontend-service:80
+- [x] Set up CI/CD (GitHub Actions)
+  - `.github/workflows/ci.yml` - PR validation, lint, test, build
+  - `.github/workflows/deploy.yml` - Auto deploy on push to main
+  - `.github/workflows/manual-deploy.yml` - Manual deployment with version selection
+- [x] Semantic versioning with Nx Release
+
+### 6.0.1 Deployment Checklist (Cloud Provider Setup)
+- [ ] Create Kubernetes cluster on cloud provider
+- [ ] Install Ingress Controller (Traefik or cloud-native)
+- [ ] Configure DNS to point to Ingress IP
+- [ ] Set up TLS/SSL certificates (cert-manager or cloud SSL)
+- [ ] Configure GitHub Secrets:
+  - `DOCKER_USERNAME`, `DOCKER_PASSWORD`
+  - `K8S_SERVER`, `K8S_CA_DATA`, `K8S_CLIENT_CERT`, `K8S_CLIENT_KEY`
+  - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY`
+- [ ] Create Kubernetes Secrets for backend environment variables
+
+---
+
+## Phase 7: Polish & Launch
 **Status: IN PROGRESS**
 
-### 6.1 Error Handling ✅
+### 7.1 Error Handling ✅
 - [x] Global error boundaries
   - `ErrorBoundary` component wraps entire app
   - Shows user-friendly error page with retry/home buttons
@@ -236,7 +272,7 @@ This document outlines the step-by-step implementation plan for building the DJ 
   - `ToastProvider` and `useToast` hook
   - Support for success/error/warning/info toasts
 
-### 6.2 Security ✅
+### 7.2 Security ✅
 - [x] Rate limiting on APIs
   - Added `slowapi` middleware for rate limiting
   - Payment endpoints: 10/minute
@@ -253,7 +289,7 @@ This document outlines the step-by-step implementation plan for building the DJ 
   - Database constraints in `20250202000000_security_enhancements.sql`
   - Length constraints, amount ranges, auto-update timestamps
 
-### 6.3 Testing ✅
+### 7.3 Testing ✅
 - [x] Unit tests for critical business logic
   - Backend pytest tests in `apps/backend/tests/`
   - Test coverage for payments, requests, sessions, venues
@@ -277,7 +313,8 @@ This document outlines the step-by-step implementation plan for building the DJ 
 | M2 | Customer can submit request | ✅ Done |
 | M3 | Payments work | ✅ Done |
 | M4 | DJ can manage requests | ✅ Done |
-| M5 | Production ready | ⏳ In Progress |
+| M5 | Deployment infrastructure | ✅ Done |
+| M6 | Production ready | ⏳ In Progress |
 
 ---
 
@@ -292,7 +329,8 @@ This document outlines the step-by-step implementation plan for building the DJ 
 7. ~~**Add Supabase Realtime**~~ ✅ - Replace polling with WebSocket subscriptions
 8. ~~**Integrate Spotify API**~~ ✅ - Song search functionality
 9. ~~**Add Payment Webhooks**~~ ✅ - Webhook endpoint created (local testing requires Stripe CLI)
-10. **Deploy to production** - Set up hosting and production environment
+10. ~~**Set up deployment infrastructure**~~ ✅ - Kubernetes + Helm + CI/CD
+11. **Deploy to production** - Configure cloud K8s cluster and secrets
 
 ---
 
