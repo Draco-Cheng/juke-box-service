@@ -1,10 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response
 from typing import Optional
-import qrcode
-import qrcode.image.svg
-from io import BytesIO
-import os
 from models import Venue, VenueCreate, VenueUpdate, Session
 from database import get_supabase
 
@@ -91,55 +86,6 @@ async def update_venue(venue_id: str, venue_update: VenueUpdate):
             raise HTTPException(status_code=404, detail="Venue not found")
 
         return result.data[0]
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.get("/{venue_id}/qr")
-async def get_venue_qr(venue_id: str):
-    """Generate QR code for venue join URL"""
-    try:
-        supabase = get_supabase()
-
-        # Get venue by ID
-        result = supabase.table("venues").select("*").eq("id", venue_id).single().execute()
-        venue = result.data
-
-        if not venue:
-            raise HTTPException(status_code=404, detail="Venue not found")
-
-        # Build join URL
-        base_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
-        join_url = f"{base_url}/join/{venue['slug']}"
-
-        # Generate QR code as SVG
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(join_url)
-        qr.make(fit=True)
-
-        # Create SVG image
-        factory = qrcode.image.svg.SvgPathImage
-        img = qr.make_image(fill_color="black", back_color="white", image_factory=factory)
-
-        # Convert to bytes
-        buffer = BytesIO()
-        img.save(buffer)
-        svg_content = buffer.getvalue()
-
-        return Response(
-            content=svg_content,
-            media_type="image/svg+xml",
-            headers={
-                "Content-Disposition": f'inline; filename="{venue["slug"]}-qr.svg"'
-            }
-        )
     except HTTPException:
         raise
     except Exception as e:

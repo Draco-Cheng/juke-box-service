@@ -239,35 +239,6 @@ class TestUpdateVenue:
 
         assert response.status_code == 404
 
-
-class TestVenueQRCode:
-    """Tests for venue QR code generation."""
-
-    def test_get_qr_code_success(self, client, mock_supabase, sample_venue):
-        """Test successful QR code generation."""
-        select_chain = mock_supabase._create_chainable(sample_venue)
-        mock_supabase.table = MagicMock(return_value=select_chain)
-
-        with patch("routes.venues.get_supabase", return_value=mock_supabase):
-            response = client.get(f"/api/venues/{sample_venue['id']}/qr")
-
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "image/svg+xml"
-        # Verify it's valid SVG
-        assert b"<svg" in response.content or b"<?xml" in response.content
-
-    def test_get_qr_code_not_found(self, client, mock_supabase):
-        """Test QR code generation for non-existent venue."""
-        select_chain = mock_supabase._create_chainable(None)
-        select_chain.execute = MagicMock(side_effect=Exception("Not found"))
-        mock_supabase.table = MagicMock(return_value=select_chain)
-
-        with patch("routes.venues.get_supabase", return_value=mock_supabase):
-            response = client.get("/api/venues/non-existent-id/qr")
-
-        assert response.status_code == 400
-
-
 class TestVenueSlugValidation:
     """Tests for venue slug validation."""
 

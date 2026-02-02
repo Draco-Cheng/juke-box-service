@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
 import { api, DJ, Venue, Request, SessionWithVenue, DEFAULT_PRICING, DEFAULT_CONTENT_FILTERS, ContentFilters } from '../../lib/api'
 import { useRequestsRealtime } from '../../hooks/useRequestsRealtime'
 
@@ -49,6 +50,7 @@ export default function DJDashboardPage() {
   const [showVenueManager, setShowVenueManager] = useState(false)
   const [showCreateVenue, setShowCreateVenue] = useState(false)
   const [editingVenue, setEditingVenue] = useState<Venue | null>(null)
+  const [qrVenue, setQrVenue] = useState<Venue | null>(null)
   const [newVenueName, setNewVenueName] = useState('')
   const [newVenueSlug, setNewVenueSlug] = useState('')
   const [editPricing, setEditPricing] = useState({ normal: 200, priority: 500, asap: 1000 })
@@ -235,10 +237,26 @@ export default function DJDashboardPage() {
     }
   }
 
-  const handleDownloadQR = async (venue: Venue) => {
-    const qrUrl = api.getVenueQR(venue.id)
-    // Open QR in new tab for download
-    window.open(qrUrl, '_blank')
+  const handleShowQR = (venue: Venue) => {
+    setQrVenue(venue)
+  }
+
+  const handleDownloadQR = () => {
+    if (!qrVenue) return
+    const svg = document.getElementById('venue-qr-svg')
+    if (!svg) return
+
+    const svgData = new XMLSerializer().serializeToString(svg)
+    const blob = new Blob([svgData], { type: 'image/svg+xml' })
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${qrVenue.slug}-qr.svg`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   // Handle Stripe Connect onboarding
@@ -437,7 +455,7 @@ export default function DJDashboardPage() {
                                 Settings
                               </button>
                               <button
-                                onClick={() => handleDownloadQR(venue)}
+                                onClick={() => handleShowQR(venue)}
                                 className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-sm transition"
                               >
                                 QR Code
@@ -613,6 +631,44 @@ export default function DJDashboardPage() {
                   className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg font-semibold transition"
                 >
                   {venueLoading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* QR Code Modal */}
+        {qrVenue && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+            <div className="bg-gray-900 rounded-lg p-6 w-full max-w-sm text-center">
+              <h2 className="text-xl font-semibold mb-2">{qrVenue.name}</h2>
+              <p className="text-gray-400 text-sm mb-4">Scan to request songs</p>
+
+              <div className="bg-white p-4 rounded-lg inline-block mb-4">
+                <QRCodeSVG
+                  id="venue-qr-svg"
+                  value={`${window.location.origin}/join/${qrVenue.slug}`}
+                  size={200}
+                  level="L"
+                />
+              </div>
+
+              <p className="text-gray-500 text-xs mb-4 break-all">
+                {window.location.origin}/join/{qrVenue.slug}
+              </p>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setQrVenue(null)}
+                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handleDownloadQR}
+                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition"
+                >
+                  Download SVG
                 </button>
               </div>
             </div>

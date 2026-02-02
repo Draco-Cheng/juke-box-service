@@ -149,7 +149,6 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  getVenueQR: (venueId: string) => `${API_BASE}/venues/${venueId}/qr`,
 
   // Requests
   createRequest: (data: RequestCreate) =>
