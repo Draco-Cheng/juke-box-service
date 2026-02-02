@@ -67,6 +67,16 @@ nx serve backend
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000
 
+### Application URLs
+
+| URL | Purpose | User |
+|-----|---------|------|
+| `/` | Home page | All |
+| `/join/:venueSlug` | Join venue & request songs (via QR code) | Customer |
+| `/register` | DJ registration | DJ |
+| `/login` or `/dj` | DJ login | DJ |
+| `/dj/dashboard` | DJ dashboard (manage requests, venues, QR codes) | DJ |
+
 ---
 
 ## Environment Variables
@@ -150,6 +160,29 @@ git push origin main
 # Deploy specific version
 npx nx run-many -t deploy --all
 ```
+
+---
+
+## Testing
+
+### Test Accounts
+
+For development and testing, use these pre-configured accounts:
+
+| Role | Email | Password |
+|------|-------|----------|
+| DJ | `dj@example.com` | `test1234` |
+| Venue Owner | `owner@example.com` | `test1234` |
+
+### Test Credit Cards (Stripe)
+
+| Card Number | Scenario |
+|-------------|----------|
+| `4242 4242 4242 4242` | Successful payment |
+| `4000 0000 0000 0002` | Declined card |
+| `4000 0000 0000 3220` | 3D Secure authentication |
+
+Use any future expiration date (e.g., `12/34`) and any 3-digit CVC.
 
 ---
 

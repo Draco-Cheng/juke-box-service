@@ -165,6 +165,11 @@ export const api = {
     }),
 
   // DJs
+  createDJ: (data: { name: string; email: string }) =>
+    request<DJ>('/djs/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   getDJByEmail: (email: string) => request<DJ>(`/djs/by-email/${email}`),
   getDJ: (djId: string) => request<DJ>(`/djs/${djId}`),
   getDJVenues: (djId: string) => request<Venue[]>(`/djs/${djId}/venues`),

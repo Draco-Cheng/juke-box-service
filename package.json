@@ -23,5 +23,8 @@
   "workspaces": [
     "packages/*",
     "apps/*"
-  ]
+  ],
+  "dependencies": {
+    "@nx/playwright": "^22.4.4"
+  }
 }
