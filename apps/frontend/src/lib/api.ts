@@ -1,16 +1,26 @@
+import { ApiError, NetworkError } from './errors'
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    ...options,
-  })
+  let res: Response
+
+  try {
+    res = await fetch(`${API_BASE}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      ...options,
+    })
+  } catch (error) {
+    // Network error (offline, DNS failure, CORS, etc.)
+    throw new NetworkError(error instanceof Error ? error.message : 'Network error')
+  }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ detail: 'Request failed' }))
-    throw new Error(error.detail || 'Request failed')
+    const errorData = await res.json().catch(() => ({ detail: 'Request failed' }))
+    const message = errorData.detail || 'Request failed'
+    throw new ApiError(res.status, message)
   }
 
   return res.json()
