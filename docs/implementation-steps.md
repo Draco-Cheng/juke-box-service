@@ -253,9 +253,18 @@ This document outlines the step-by-step implementation plan for building the DJ 
   - Database constraints in `20250202000000_security_enhancements.sql`
   - Length constraints, amount ranges, auto-update timestamps
 
-### 6.3 Testing
-- [ ] Unit tests for critical business logic
-- [ ] E2E tests for main user flows
+### 6.3 Testing ✅
+- [x] Unit tests for critical business logic
+  - Backend pytest tests in `apps/backend/tests/`
+  - Test coverage for payments, requests, sessions, venues
+  - 60 unit tests covering API endpoints and business logic
+  - Test fixtures and mocks for Supabase and Stripe
+- [x] E2E tests for main user flows
+  - Playwright tests in `apps/frontend-e2e/tests/`
+  - Homepage navigation tests
+  - DJ login page tests
+  - Customer join page tests with mocked API responses
+  - Tier selection and form validation tests
 
 ---
 
