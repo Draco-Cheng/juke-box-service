@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from enum import Enum
 from typing import Optional
+import re
+import html
 
 
 class RequestTier(str, Enum):
@@ -44,9 +46,16 @@ class VenueSettings(BaseModel):
 
 # Venue
 class VenueBase(BaseModel):
-    name: str
-    slug: str
+    name: str = Field(..., min_length=1, max_length=100)
+    slug: str = Field(..., min_length=1, max_length=50, pattern=r'^[a-z0-9-]+$')
     settings: VenueSettings = Field(default_factory=VenueSettings)
+
+    @field_validator('name')
+    @classmethod
+    def sanitize_name(cls, v: str) -> str:
+        v = v.strip()
+        v = re.sub(r'[\x00-\x1f\x7f]', '', v)
+        return html.escape(v)
 
 
 class VenueCreate(VenueBase):
@@ -69,8 +78,23 @@ class Venue(VenueBase):
 
 # DJ
 class DJBase(BaseModel):
-    name: str
-    email: str
+    name: str = Field(..., min_length=1, max_length=100)
+    email: str = Field(..., max_length=255)
+
+    @field_validator('name')
+    @classmethod
+    def sanitize_name(cls, v: str) -> str:
+        v = v.strip()
+        v = re.sub(r'[\x00-\x1f\x7f]', '', v)
+        return html.escape(v)
+
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', v):
+            raise ValueError('Invalid email format')
+        return v
 
 
 class DJCreate(DJBase):
@@ -114,16 +138,39 @@ class Session(SessionBase):
 
 # Request
 class RequestBase(BaseModel):
-    song_title: str
-    song_artist: Optional[str] = None
-    spotify_track_id: Optional[str] = None
+    song_title: str = Field(..., min_length=1, max_length=200)
+    song_artist: Optional[str] = Field(None, max_length=200)
+    spotify_track_id: Optional[str] = Field(None, max_length=50, pattern=r'^[a-zA-Z0-9]+$')
     tier: RequestTier = RequestTier.NORMAL
-    message: Optional[str] = None
-    amount: int  # in cents
+    message: Optional[str] = Field(None, max_length=500)
+    amount: int = Field(..., ge=0, le=100000)  # in cents, max 1000 EUR
+
+    @field_validator('song_title', 'song_artist')
+    @classmethod
+    def sanitize_song_field(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        v = re.sub(r'[\x00-\x1f\x7f]', '', v)
+        return html.escape(v)
+
+    @field_validator('message')
+    @classmethod
+    def sanitize_message(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        # Keep newlines but remove other control chars
+        v = re.sub(r'[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]', '', v)
+        return html.escape(v)
 
 
 class RequestCreate(RequestBase):
-    session_id: str
+    session_id: str = Field(..., min_length=1)
     customer_id: Optional[str] = None
 
 

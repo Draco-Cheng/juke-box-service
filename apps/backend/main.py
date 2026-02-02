@@ -1,12 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
 from routes import venues_router, sessions_router, requests_router, djs_router, payments_router, connect_router, spotify_router, webhooks_router
+from middleware import limiter, rate_limit_exceeded_handler
 
 app = FastAPI(
     title="DJ Request API",
     description="Paid song request platform for bars and clubs",
     version="0.1.0"
 )
+
+# Rate limiting
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
 # CORS
 app.add_middleware(

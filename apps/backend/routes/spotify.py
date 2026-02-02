@@ -1,11 +1,14 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from services.spotify import spotify_service, SpotifyTrack
+from middleware import limiter, RateLimits
 
 router = APIRouter(prefix="/spotify", tags=["spotify"])
 
 
 @router.get("/search", response_model=list[SpotifyTrack])
+@limiter.limit(RateLimits.SEARCH)
 async def search_tracks(
+    request: Request,
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50, description="Number of results"),
 ):

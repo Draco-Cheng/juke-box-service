@@ -1,13 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import List, Optional
 from models import DJ, DJCreate, Venue, VenueCreate, VenueSettings
 from database import get_supabase
+from middleware import limiter, RateLimits
 
 router = APIRouter(prefix="/djs", tags=["djs"])
 
 
 @router.post("/", response_model=DJ)
-async def create_dj(dj: DJCreate):
+@limiter.limit(RateLimits.AUTH)
+async def create_dj(request: Request, dj: DJCreate):
     """Create a new DJ profile"""
     try:
         supabase = get_supabase()
@@ -18,7 +20,8 @@ async def create_dj(dj: DJCreate):
 
 
 @router.get("/by-email/{email}", response_model=DJ)
-async def get_dj_by_email(email: str):
+@limiter.limit(RateLimits.AUTH)
+async def get_dj_by_email(request: Request, email: str):
     """Get DJ by email (for login)"""
     try:
         supabase = get_supabase()
@@ -101,7 +104,8 @@ async def get_dj_active_session(dj_id: str):
 
 
 @router.post("/{dj_id}/venues", response_model=Venue)
-async def create_dj_venue(dj_id: str, venue: VenueCreate):
+@limiter.limit(RateLimits.WRITE)
+async def create_dj_venue(request: Request, dj_id: str, venue: VenueCreate):
     """Create a new venue for a DJ"""
     try:
         supabase = get_supabase()

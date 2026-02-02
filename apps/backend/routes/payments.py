@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field, field_validator
 from database import get_supabase
 from services.spotify import spotify_service
+from middleware import limiter, RateLimits
 import stripe
 import os
+import re
+import html
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -14,14 +17,36 @@ PLATFORM_FEE_PERCENT = 15
 
 
 class CreatePaymentIntentRequest(BaseModel):
-    session_id: str
-    song_title: str
-    song_artist: str | None = None
-    spotify_track_id: str | None = None
+    session_id: str = Field(..., min_length=1)
+    song_title: str = Field(..., min_length=1, max_length=200)
+    song_artist: str | None = Field(None, max_length=200)
+    spotify_track_id: str | None = Field(None, max_length=50, pattern=r'^[a-zA-Z0-9]+$')
     explicit: bool = False
-    message: str | None = None
-    tier: str = "normal"
-    amount: int  # in cents
+    message: str | None = Field(None, max_length=500)
+    tier: str = Field("normal", pattern=r'^(normal|priority|asap)$')
+    amount: int = Field(..., ge=50, le=100000)  # min 50 cents, max 1000 EUR
+
+    @field_validator('song_title', 'song_artist')
+    @classmethod
+    def sanitize_string(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        v = re.sub(r'[\x00-\x1f\x7f]', '', v)
+        return html.escape(v)
+
+    @field_validator('message')
+    @classmethod
+    def sanitize_message(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        v = re.sub(r'[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]', '', v)
+        return html.escape(v)
 
 
 class PaymentIntentResponse(BaseModel):
@@ -68,7 +93,8 @@ async def validate_content_filters(
 
 
 @router.post("/create-payment-intent", response_model=PaymentIntentResponse)
-async def create_payment_intent(request: CreatePaymentIntentRequest):
+@limiter.limit(RateLimits.PAYMENT)
+async def create_payment_intent(request: Request, payment_request: CreatePaymentIntentRequest):
     """Create a Stripe PaymentIntent for a song request"""
     try:
         supabase = get_supabase()
@@ -77,7 +103,7 @@ async def create_payment_intent(request: CreatePaymentIntentRequest):
         session_result = (
             supabase.table("sessions")
             .select("*, djs(*), venues(*)")
-            .eq("id", request.session_id)
+            .eq("id", payment_request.session_id)
             .single()
             .execute()
         )
@@ -92,7 +118,7 @@ async def create_payment_intent(request: CreatePaymentIntentRequest):
         # Validate content filters
         if venue and venue.get("settings"):
             is_valid, error_message = await validate_content_filters(
-                request, venue["settings"]
+                payment_request, venue["settings"]
             )
             if not is_valid:
                 raise HTTPException(status_code=400, detail=error_message)
@@ -101,19 +127,19 @@ async def create_payment_intent(request: CreatePaymentIntentRequest):
         stripe_account_id = dj.get("stripe_account_id") if dj else None
 
         # Calculate platform fee
-        platform_fee = int(request.amount * PLATFORM_FEE_PERCENT / 100)
+        platform_fee = int(payment_request.amount * PLATFORM_FEE_PERCENT / 100)
 
         # Create PaymentIntent
         payment_intent_params = {
-            "amount": request.amount,
+            "amount": payment_request.amount,
             "currency": "eur",
             "metadata": {
-                "session_id": request.session_id,
-                "song_title": request.song_title,
-                "song_artist": request.song_artist or "",
-                "spotify_track_id": request.spotify_track_id or "",
-                "message": request.message or "",
-                "tier": request.tier,
+                "session_id": payment_request.session_id,
+                "song_title": payment_request.song_title,
+                "song_artist": payment_request.song_artist or "",
+                "spotify_track_id": payment_request.spotify_track_id or "",
+                "message": payment_request.message or "",
+                "tier": payment_request.tier,
             },
         }
 
@@ -138,7 +164,8 @@ async def create_payment_intent(request: CreatePaymentIntentRequest):
 
 
 @router.post("/confirm-payment/{payment_intent_id}")
-async def confirm_payment(payment_intent_id: str):
+@limiter.limit(RateLimits.PAYMENT)
+async def confirm_payment(request: Request, payment_intent_id: str):
     """Confirm payment and create the song request"""
     try:
         # Retrieve PaymentIntent to verify it's paid
