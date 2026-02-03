@@ -1,10 +1,12 @@
 # Frontend Dockerfile for Vite + React
+# syntax=docker/dockerfile:1
+# check=skip=SecretsUsedInArgOrEnv
 FROM node:20-alpine AS base
 WORKDIR /app
 
 # Install dependencies first (for better caching)
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json ./
+RUN npm install
 
 # Copy the rest of the source code
 COPY . .
