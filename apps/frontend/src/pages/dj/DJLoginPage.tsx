@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { api, DJ } from '../../lib/api'
+import { api } from '../../lib/api'
 
 export default function DJLoginPage() {
   const navigate = useNavigate()

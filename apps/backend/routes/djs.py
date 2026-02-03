@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
-from typing import List, Optional
-from models import DJ, DJCreate, Venue, VenueCreate, VenueSettings
+from typing import List
+from models import DJ, DJCreate, Venue, VenueCreate
 from database import get_supabase
 from middleware import limiter, RateLimits
 

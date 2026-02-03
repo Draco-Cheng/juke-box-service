@@ -13,7 +13,7 @@ async def get_venue_by_slug(slug: str):
         supabase = get_supabase()
         result = supabase.table("venues").select("*").eq("slug", slug).single().execute()
         return result.data
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=404, detail=f"Venue not found: {slug}")
 
 

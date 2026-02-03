@@ -2,8 +2,7 @@
 Unit tests for request endpoints and business logic.
 """
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from fastapi.testclient import TestClient
+from unittest.mock import patch, MagicMock
 
 
 class TestCreateRequest:

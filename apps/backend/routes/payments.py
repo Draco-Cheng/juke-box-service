@@ -87,7 +87,7 @@ async def validate_content_filters(
         artist_lower = request.song_artist.lower()
         for blocked in blocked_artists:
             if blocked.lower() in artist_lower:
-                return False, f"Songs by this artist are not allowed at this venue"
+                return False, "Songs by this artist are not allowed at this venue"
 
     return True, None
 
