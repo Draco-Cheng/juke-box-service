@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from routes import venues_router, sessions_router, requests_router, djs_router, payments_router, connect_router, spotify_router, webhooks_router

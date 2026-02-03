@@ -1,9 +1,7 @@
 """
 Unit tests for session endpoints and business logic.
 """
-import pytest
 from unittest.mock import patch, MagicMock
-from fastapi.testclient import TestClient
 
 
 class TestCreateSession:

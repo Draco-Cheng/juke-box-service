@@ -13,8 +13,9 @@ test.describe('DJ Login Page', () => {
     await expect(page.getByLabel('Email')).toBeVisible();
     await expect(page.getByRole('button', { name: /Login/i })).toBeVisible();
 
-    // Check help text
-    await expect(page.getByText('Contact venue admin to get your DJ account')).toBeVisible();
+    // Check registration link
+    await expect(page.getByText("Don't have an account?")).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Register' })).toBeVisible();
   });
 
   test('should show error message for invalid email', async ({ page }) => {

@@ -21,13 +21,6 @@ const TIER_LABELS = {
   normal: 'Normal',
 }
 
-const STATUS_COLORS = {
-  pending: 'bg-blue-600',
-  accepted: 'bg-green-600',
-  rejected: 'bg-red-600',
-  played: 'bg-purple-600',
-}
-
 interface ConnectStatus {
   connected: boolean
   details_submitted: boolean
@@ -61,7 +54,6 @@ export default function DJDashboardPage() {
   // Realtime subscription for requests
   const {
     requests,
-    isRealtime,
     refetch: refetchRequests,
   } = useRequestsRealtime({
     sessionId: activeSession?.id ?? null,
@@ -117,7 +109,7 @@ export default function DJDashboardPage() {
     if (!dj || !selectedVenueId) return
 
     try {
-      const session = await api.createSession(selectedVenueId, dj.id)
+      await api.createSession(selectedVenueId, dj.id)
       // Refetch to get session with venue
       const sessionData = await api.getDJActiveSession(dj.id)
       setActiveSession(sessionData)
@@ -372,7 +364,7 @@ export default function DJDashboardPage() {
           <div className="bg-green-900/50 border border-green-600 rounded-lg p-4 mb-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-green-400">✓</span>
+                <span className="text-green-400">✅</span>
                 <p className="font-semibold text-green-300">Stripe Connected</p>
               </div>
               <button
@@ -752,7 +744,7 @@ export default function DJDashboardPage() {
                             {TIER_LABELS[request.tier]}
                           </span>
                           <span className="text-green-400 font-semibold">
-                            €{(request.amount / 100).toFixed(0)}
+                            ?�{(request.amount / 100).toFixed(0)}
                           </span>
                         </div>
                       </div>
@@ -809,7 +801,7 @@ export default function DJDashboardPage() {
                           <p className="text-gray-500 text-sm">{request.song_artist}</p>
                         )}
                       </div>
-                      <span className="text-purple-400 text-sm">✓ Played</span>
+                      <span className="text-purple-400 text-sm">✅ Played</span>
                     </div>
                   ))}
                 </div>
