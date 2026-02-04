@@ -131,6 +131,7 @@ Configure these secrets in your GitHub repository settings:
 | `VITE_SUPABASE_URL` | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `INGRESS_HOST` | Domain for ingress routing (e.g., `jukebox.music.com`) |
 
 ### Kubernetes Secrets
 
@@ -159,6 +160,14 @@ git push origin main
 
 # Deploy specific version
 npx nx run-many -t deploy --all
+```
+
+### Manual Helm Deployment
+
+```bash
+helm upgrade --install jukebox ./helm \
+  --set namespace.name=juke-box-service \
+  --set ingress.host=jukebox.dracocheng.com
 ```
 
 ---

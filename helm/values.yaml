@@ -4,6 +4,7 @@ namespace:
 
 ingress:
   className: traefik
+  host: ""  # Set via --set ingress.host=jukebox.dracocheng.com
   rules:
     - paths:
         - path: /api
