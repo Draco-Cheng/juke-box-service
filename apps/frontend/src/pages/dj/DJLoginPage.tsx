@@ -22,10 +22,14 @@ export default function DJLoginPage() {
     const { error: signInError } = await signIn(email.trim(), password)
 
     if (signInError) {
-      if (signInError.message.includes('Invalid login credentials')) {
-        setError('Invalid email or password')
+      // Handle auth errors with user-friendly messages
+      // For login failures, always show generic message to avoid revealing user existence
+      const msg = signInError.message.toLowerCase()
+      if (msg.includes('not configured') || msg.includes('unavailable')) {
+        setError('Authentication service unavailable')
       } else {
-        setError(signInError.message)
+        // For any credential-related error, show generic message
+        setError('Invalid email or password')
       }
       setLoading(false)
       return
