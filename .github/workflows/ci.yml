@@ -91,6 +91,10 @@ jobs:
       # Run E2E tests for affected projects
       - name: Run E2E tests for affected projects
         if: steps.check-e2e.outputs.e2e-affected == 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_API_URL: http://localhost:8000/api
         run: |
           npx nx affected -t e2e --base=${{ env.NX_BASE }} --head=${{ env.NX_HEAD }}
 
