@@ -2,11 +2,10 @@
 JWT Authentication middleware for Supabase Auth
 """
 from typing import Optional
-from fastapi import HTTPException, Depends, Request
+from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from jwt.exceptions import InvalidTokenError
-from config import SUPABASE_URL
 
 # Supabase JWT settings
 SUPABASE_JWT_SECRET = None  # Will be loaded from config
