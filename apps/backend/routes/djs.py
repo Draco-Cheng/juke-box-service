@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import List
 from models import DJ, DJCreate, Venue, VenueCreate
 from database import get_supabase
-from middleware import limiter, RateLimits
+from middleware import limiter, RateLimits, require_auth, AuthenticatedUser
 
 router = APIRouter(prefix="/djs", tags=["djs"])
 
@@ -22,7 +22,7 @@ async def create_dj(request: Request, dj: DJCreate):
 @router.get("/by-email/{email}", response_model=DJ)
 @limiter.limit(RateLimits.AUTH)
 async def get_dj_by_email(request: Request, email: str):
-    """Get DJ by email (for login)"""
+    """Get DJ by email (for authenticated user lookup)"""
     try:
         supabase = get_supabase()
         result = (
@@ -37,9 +37,26 @@ async def get_dj_by_email(request: Request, email: str):
         raise HTTPException(status_code=404, detail="DJ not found")
 
 
+@router.get("/me", response_model=DJ)
+async def get_current_dj(user: AuthenticatedUser = Depends(require_auth)):
+    """Get the authenticated DJ's profile"""
+    try:
+        supabase = get_supabase()
+        result = (
+            supabase.table("djs")
+            .select("*")
+            .eq("email", user.email)
+            .single()
+            .execute()
+        )
+        return result.data
+    except Exception:
+        raise HTTPException(status_code=404, detail="DJ profile not found")
+
+
 @router.get("/{dj_id}", response_model=DJ)
-async def get_dj(dj_id: str):
-    """Get DJ by ID"""
+async def get_dj(dj_id: str, user: AuthenticatedUser = Depends(require_auth)):
+    """Get DJ by ID (requires authentication)"""
     try:
         supabase = get_supabase()
         result = (
@@ -49,16 +66,35 @@ async def get_dj(dj_id: str):
             .single()
             .execute()
         )
+
+        # Only allow DJs to view their own profile
+        if result.data and result.data.get("email") != user.email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
         return result.data
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=404, detail="DJ not found")
 
 
 @router.get("/{dj_id}/venues", response_model=List[dict])
-async def get_dj_venues(dj_id: str):
-    """Get venues associated with a DJ"""
+async def get_dj_venues(dj_id: str, user: AuthenticatedUser = Depends(require_auth)):
+    """Get venues associated with a DJ (requires authentication)"""
     try:
         supabase = get_supabase()
+
+        # Verify the DJ belongs to this user
+        dj_check = (
+            supabase.table("djs")
+            .select("email")
+            .eq("id", dj_id)
+            .single()
+            .execute()
+        )
+        if not dj_check.data or dj_check.data.get("email") != user.email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
         # Get unique venue IDs from sessions this DJ has run
         result = (
             supabase.table("sessions")
@@ -77,15 +113,31 @@ async def get_dj_venues(dj_id: str):
                 venues.append(venue)
 
         return venues
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/{dj_id}/active-session")
-async def get_dj_active_session(dj_id: str):
-    """Get DJ's current active session"""
+async def get_dj_active_session(
+    dj_id: str, user: AuthenticatedUser = Depends(require_auth)
+):
+    """Get DJ's current active session (requires authentication)"""
     try:
         supabase = get_supabase()
+
+        # Verify the DJ belongs to this user
+        dj_check = (
+            supabase.table("djs")
+            .select("email")
+            .eq("id", dj_id)
+            .single()
+            .execute()
+        )
+        if not dj_check.data or dj_check.data.get("email") != user.email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
         result = (
             supabase.table("sessions")
             .select("*, venues(*)")
@@ -99,21 +151,36 @@ async def get_dj_active_session(dj_id: str):
         if result.data:
             return result.data[0]
         return None
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/{dj_id}/venues", response_model=Venue)
 @limiter.limit(RateLimits.WRITE)
-async def create_dj_venue(request: Request, dj_id: str, venue: VenueCreate):
-    """Create a new venue for a DJ"""
+async def create_dj_venue(
+    request: Request,
+    dj_id: str,
+    venue: VenueCreate,
+    user: AuthenticatedUser = Depends(require_auth),
+):
+    """Create a new venue for a DJ (requires authentication)"""
     try:
         supabase = get_supabase()
 
-        # Verify DJ exists
-        dj_result = supabase.table("djs").select("id").eq("id", dj_id).single().execute()
+        # Verify the DJ belongs to this user
+        dj_result = (
+            supabase.table("djs")
+            .select("id, email")
+            .eq("id", dj_id)
+            .single()
+            .execute()
+        )
         if not dj_result.data:
             raise HTTPException(status_code=404, detail="DJ not found")
+        if dj_result.data.get("email") != user.email:
+            raise HTTPException(status_code=403, detail="Access denied")
 
         # Check if slug is already taken
         slug_check = supabase.table("venues").select("id").eq("slug", venue.slug).execute()
