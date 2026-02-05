@@ -72,9 +72,12 @@ jobs:
       # === Kubernetes ===
       K8S_NAMESPACE: juke-box-service
       K8S_CA_DATA: ${{ secrets.K8S_CA_DATA }}
+      K8S_SERVER: ${{ secrets.K8S_SERVER }}
+      # Auth Method 1: Token-based (recommended for cloud providers)
+      K8S_USER_TOKEN: ${{ secrets.K8S_USER_TOKEN }}
+      # Auth Method 2: Certificate-based (if token not provided)
       K8S_CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT }}
       K8S_CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY }}
-      K8S_SERVER: ${{ secrets.K8S_SERVER }}
 
       # === Frontend build-time env (baked into static files) ===
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -87,7 +90,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ssh-key: ${{ secrets.DEPLOY_KEY }}
+          # DEPLOY_KEY is optional - if not set, uses default GITHUB_TOKEN
+          # Set DEPLOY_KEY secret if you need to push tags/commits back to the repo
+          ssh-key: ${{ secrets.DEPLOY_KEY || '' }}
           fetch-depth: 0
 
       - name: Setup Node.js
