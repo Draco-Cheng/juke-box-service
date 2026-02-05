@@ -20,6 +20,9 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
         ports:
         - containerPort: {{ .Values.service.targetPort | default .Values.service.port }}
+        envFrom:
+        - secretRef:
+            name: backend-secrets
         env:
         - name: PORT
           value: {{ .Values.service.port | quote }}
