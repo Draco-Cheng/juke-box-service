@@ -101,6 +101,7 @@ VITE_API_URL=http://localhost:8000/api
 # Supabase
 SUPABASE_URL=http://localhost:54321
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_JWT_SECRET=your-jwt-secret  # Found in Supabase Dashboard > Settings > API
 
 # Stripe
 STRIPE_SECRET_KEY=sk_test_xxx
@@ -142,6 +143,7 @@ kubectl create secret generic backend-secrets \
   --namespace=juke-box-service \
   --from-literal=SUPABASE_URL=https://your-project.supabase.co \
   --from-literal=SUPABASE_SERVICE_ROLE_KEY=your-service-role-key \
+  --from-literal=SUPABASE_JWT_SECRET=your-jwt-secret \
   --from-literal=STRIPE_SECRET_KEY=sk_live_xxx \
   --from-literal=STRIPE_PUBLISHABLE_KEY=pk_live_xxx \
   --from-literal=STRIPE_WEBHOOK_SECRET=whsec_xxx \

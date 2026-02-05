@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { api, DJ, Venue, Request, SessionWithVenue, DEFAULT_PRICING, DEFAULT_CONTENT_FILTERS, ContentFilters } from '../../lib/api'
+import { api, Venue, Request, SessionWithVenue, DEFAULT_PRICING, DEFAULT_CONTENT_FILTERS, ContentFilters } from '../../lib/api'
 import { useRequestsRealtime } from '../../hooks/useRequestsRealtime'
+import { useAuth } from '../../contexts/AuthContext'
 
 // Helper to get pricing from venue settings with defaults
 function getVenuePricing(venue: Venue) {
@@ -31,7 +32,7 @@ interface ConnectStatus {
 
 export default function DJDashboardPage() {
   const navigate = useNavigate()
-  const [dj, setDJ] = useState<DJ | null>(null)
+  const { dj, loading: authLoading, signOut } = useAuth()
   const [venues, setVenues] = useState<Venue[]>([])
   const [activeSession, setActiveSession] = useState<SessionWithVenue | null>(null)
   const [loading, setLoading] = useState(true)
@@ -59,15 +60,12 @@ export default function DJDashboardPage() {
     sessionId: activeSession?.id ?? null,
   })
 
-  // Load DJ from localStorage
+  // Redirect if not authenticated
   useEffect(() => {
-    const storedDJ = localStorage.getItem('dj')
-    if (!storedDJ) {
+    if (!authLoading && !dj) {
       navigate('/dj')
-      return
     }
-    setDJ(JSON.parse(storedDJ))
-  }, [navigate])
+  }, [authLoading, dj, navigate])
 
   // Fetch Connect status
   const fetchConnectStatus = useCallback(async () => {
@@ -154,8 +152,8 @@ export default function DJDashboardPage() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('dj')
+  const handleLogout = async () => {
+    await signOut()
     navigate('/dj')
   }
 
@@ -295,7 +293,7 @@ export default function DJDashboardPage() {
     }
   }, [dj, fetchConnectStatus])
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <p>Loading...</p>

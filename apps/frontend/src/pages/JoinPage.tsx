@@ -99,7 +99,7 @@ function PaymentForm({
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium"
+          className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition"
           disabled={processing}
         >
           Cancel
@@ -107,7 +107,7 @@ function PaymentForm({
         <button
           type="submit"
           disabled={!stripe || processing}
-          className="flex-1 py-3 bg-black text-white rounded-lg font-medium disabled:opacity-50"
+          className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 transition"
         >
           {processing ? 'Processing...' : 'Pay Now'}
         </button>
@@ -285,25 +285,25 @@ export default function JoinPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-400">Loading...</p>
       </div>
     )
   }
 
   if (error || !venue) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-red-500">{error || 'Venue not found'}</p>
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <p className="text-red-400">{error || 'Venue not found'}</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-md mx-auto">
         <h1 className="text-2xl font-bold mb-1">{venue.name}</h1>
-        <p className="text-gray-500 text-sm mb-6">
+        <p className="text-gray-400 text-sm mb-6">
           {session ? 'Session active' : 'No active session'}
         </p>
 
@@ -311,16 +311,16 @@ export default function JoinPage() {
           <>
             {/* Payment Form */}
             {showPayment && clientSecret && stripePromise && paymentIntentId ? (
-              <div className="bg-white rounded-lg p-4 shadow-sm mb-4">
+              <div className="bg-gray-800 rounded-lg p-4 shadow-sm mb-4 border border-gray-700">
                 <h2 className="font-semibold mb-3">Complete Payment</h2>
-                <p className="text-gray-600 text-sm mb-4">
+                <p className="text-gray-400 text-sm mb-4">
                   {songTitle} {songArtist && `- ${songArtist}`}
                 </p>
                 <Elements
                   stripe={stripePromise}
                   options={{
                     clientSecret,
-                    appearance: { theme: 'stripe' },
+                    appearance: { theme: 'night' },
                   }}
                 >
                   <PaymentForm
@@ -373,7 +373,7 @@ export default function JoinPage() {
               )}
 
               {/* Request Form */}
-              <form onSubmit={handleSubmit} className="bg-white rounded-lg p-4 shadow-sm mb-4">
+              <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg p-4 shadow-sm mb-4 border border-gray-700">
                 <h2 className="font-semibold mb-3">Request a Song</h2>
 
                 <div className="mb-3">
@@ -393,8 +393,8 @@ export default function JoinPage() {
                         onClick={() => setTier(t)}
                         className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
                           tier === t
-                            ? 'bg-black text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                         }`}
                       >
                         {t === 'normal' && `Normal ${currency}${(price / 100).toFixed(0)}`}
@@ -409,7 +409,7 @@ export default function JoinPage() {
                   placeholder="Message to DJ (optional)"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-black resize-none"
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg mb-3 focus:outline-none focus:border-purple-500 resize-none text-white placeholder:text-gray-400"
                   rows={2}
                 />
 
@@ -422,7 +422,7 @@ export default function JoinPage() {
                 <button
                   type="submit"
                   disabled={submitting || !songTitle.trim()}
-                  className="w-full py-3 bg-black text-white rounded-lg font-medium disabled:opacity-50"
+                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 transition"
                 >
                   {submitting ? 'Loading...' : `Pay €${(getVenuePricing(venue)[tier] / 100).toFixed(0)} & Submit`}
                 </button>
@@ -431,31 +431,31 @@ export default function JoinPage() {
             )}
 
             {/* Request Queue */}
-            <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-700">
               <h2 className="font-semibold mb-3">Queue ({requests.length})</h2>
               {requests.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No requests yet</p>
+                <p className="text-gray-400 text-center py-4">No requests yet</p>
               ) : (
                 <div className="space-y-2">
                   {requests.map((req) => (
                     <div
                       key={req.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-gray-700 rounded-lg"
                     >
                       <div>
                         <p className="font-medium">{req.song_title}</p>
                         {req.song_artist && (
-                          <p className="text-sm text-gray-500">{req.song_artist}</p>
+                          <p className="text-sm text-gray-400">{req.song_artist}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
                         <span
                           className={`text-xs px-2 py-1 rounded ${
                             req.tier === 'asap'
-                              ? 'bg-red-100 text-red-700'
+                              ? 'bg-red-900 text-red-300'
                               : req.tier === 'priority'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-gray-100 text-gray-700'
+                                ? 'bg-yellow-900 text-yellow-300'
+                                : 'bg-gray-600 text-gray-300'
                           }`}
                         >
                           {req.tier}
@@ -463,12 +463,12 @@ export default function JoinPage() {
                         <span
                           className={`text-xs px-2 py-1 rounded ${
                             req.status === 'played'
-                              ? 'bg-green-100 text-green-700'
+                              ? 'bg-green-900 text-green-300'
                               : req.status === 'accepted'
-                                ? 'bg-blue-100 text-blue-700'
+                                ? 'bg-blue-900 text-blue-300'
                                 : req.status === 'rejected'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-gray-100 text-gray-700'
+                                  ? 'bg-red-900 text-red-300'
+                                  : 'bg-gray-600 text-gray-300'
                           }`}
                         >
                           {req.status}
@@ -481,9 +481,9 @@ export default function JoinPage() {
             </div>
           </>
         ) : (
-          <div className="bg-white rounded-lg p-8 shadow-sm text-center">
-            <p className="text-gray-500">No active DJ session at this venue.</p>
-            <p className="text-gray-400 text-sm mt-2">Check back later!</p>
+          <div className="bg-gray-800 rounded-lg p-8 shadow-sm text-center border border-gray-700">
+            <p className="text-gray-400">No active DJ session at this venue.</p>
+            <p className="text-gray-500 text-sm mt-2">Check back later!</p>
           </div>
         )}
       </div>
