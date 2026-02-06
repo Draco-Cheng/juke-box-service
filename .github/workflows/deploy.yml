@@ -79,6 +79,9 @@ jobs:
       K8S_CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT }}
       K8S_CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY }}
 
+      # === Ingress settings ===
+      INGRESS_HOST: ${{ secrets.INGRESS_HOST }}
+
       # === Frontend build-time env (baked into static files) ===
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}

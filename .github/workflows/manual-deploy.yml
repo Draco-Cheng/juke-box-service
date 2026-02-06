@@ -49,6 +49,9 @@ jobs:
       K8S_CLIENT_CERT: ${{ secrets.K8S_CLIENT_CERT }}
       K8S_CLIENT_KEY: ${{ secrets.K8S_CLIENT_KEY }}
 
+      # === Ingress settings ===
+      INGRESS_HOST: ${{ secrets.INGRESS_HOST }}
+
       # === Deployment settings ===
       VERSION: ${{ inputs.version }}
       REPO_NAME: ${{ github.event.repository.name }}
