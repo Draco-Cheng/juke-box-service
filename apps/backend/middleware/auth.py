@@ -1,27 +1,35 @@
 """
 JWT Authentication middleware for Supabase Auth
 """
+import logging
+import os
 from typing import Optional
+
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from jwt.exceptions import InvalidTokenError
 
-# Supabase JWT settings
-SUPABASE_JWT_SECRET = None  # Will be loaded from config
-
 security = HTTPBearer(auto_error=False)
+
+logger = logging.getLogger(__name__)
 
 
 def get_jwt_secret():
     """Get JWT secret - uses Supabase's JWT secret"""
-    import os
     secret = os.getenv("SUPABASE_JWT_SECRET")
     if not secret:
-        # For development, you can use the default Supabase local secret
-        # In production, this should be set via environment variable
         secret = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
     return secret
+
+
+def _get_jwks_client():
+    """Get JWKS client for RS256 verification (Supabase cloud)"""
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    if not supabase_url:
+        return None
+    jwks_url = f"{supabase_url}/auth/v1/.well-known/jwks.json"
+    return jwt.PyJWKClient(jwks_url, cache_keys=True)
 
 
 class AuthenticatedUser:
@@ -45,17 +53,33 @@ async def get_current_user(
 
     token = credentials.credentials
     try:
-        # Supabase uses HS256 algorithm
-        # The JWT secret can be found in Supabase dashboard > Settings > API > JWT Secret
-        jwt_secret = get_jwt_secret()
+        # Detect algorithm from token header
+        header = jwt.get_unverified_header(token)
+        alg = header.get("alg", "HS256")
 
-        payload = jwt.decode(
-            token,
-            jwt_secret,
-            algorithms=["HS256"],
-            audience="authenticated",
-            options={"verify_aud": True}
-        )
+        if alg in ("RS256", "ES256"):
+            # Supabase cloud uses asymmetric algorithms (RS256/ES256) with JWKS
+            jwks_client = _get_jwks_client()
+            if not jwks_client:
+                raise InvalidTokenError(f"{alg} token but SUPABASE_URL not configured")
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=[alg],
+                audience="authenticated",
+                options={"verify_aud": True}
+            )
+        else:
+            # Supabase self-hosted / local uses HS256
+            jwt_secret = get_jwt_secret()
+            payload = jwt.decode(
+                token,
+                jwt_secret,
+                algorithms=["HS256"],
+                audience="authenticated",
+                options={"verify_aud": True}
+            )
 
         user_id = payload.get("sub")
         email = payload.get("email")
@@ -67,6 +91,7 @@ async def get_current_user(
         return AuthenticatedUser(user_id=user_id, email=email, role=role)
 
     except InvalidTokenError as e:
+        logger.error(f"JWT validation failed: {str(e)}")
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
 
