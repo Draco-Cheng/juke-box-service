@@ -72,7 +72,7 @@ export function useRequestsRealtime({
     // Skip realtime if not enabled - fallback to polling
     if (!isRealtimeEnabled || !supabase) {
       console.log('[Realtime] Not available, falling back to polling')
-      const interval = setInterval(fetchRequests, 3000)
+      const interval = setInterval(fetchRequests, 30000)
       return () => clearInterval(interval)
     }
 
