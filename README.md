@@ -178,12 +178,11 @@ helm upgrade --install jukebox ./helm \
 
 ### Test Accounts
 
-For development and testing, use these pre-configured accounts:
+For development and testing, use this pre-configured account:
 
 | Role | Email | Password |
 |------|-------|----------|
 | DJ | `dj@example.com` | `test1234` |
-| Venue Owner | `owner@example.com` | `test1234` |
 
 ### Test Credit Cards (Stripe)
 

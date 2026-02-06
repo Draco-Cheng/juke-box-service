@@ -34,10 +34,15 @@ export default function RegisterPage() {
     const { error: signUpError } = await signUp(email.trim(), password, name.trim())
 
     if (signUpError) {
-      if (signUpError.message.includes('already registered')) {
+      const msg = signUpError.message.toLowerCase()
+      if (msg.includes('already registered')) {
         setError('An account with this email already exists.')
+      } else if (msg.includes('rate_limit') || msg.includes('rate limit')) {
+        setError('Too many attempts. Please wait a few minutes before trying again.')
+      } else if (msg.includes('not configured') || msg.includes('unavailable')) {
+        setError('Registration service temporarily unavailable. Please try again later.')
       } else {
-        setError(signUpError.message)
+        setError('Registration failed. Please try again.')
       }
       setLoading(false)
       return
