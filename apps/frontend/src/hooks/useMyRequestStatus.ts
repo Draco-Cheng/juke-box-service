@@ -61,7 +61,7 @@ export function useMyRequestStatus({
     // Skip realtime if not enabled - fallback to polling
     if (!isRealtimeEnabled || !supabase) {
       console.log('[Realtime] Not available for request status, falling back to polling')
-      const interval = setInterval(fetchRequest, 2000)
+      const interval = setInterval(fetchRequest, 30000)
       return () => clearInterval(interval)
     }
 
