@@ -1,37 +1,21 @@
-# AI_README
+# DJ Request Platform
 
-## What This Is
-
-DJ Request — paid song request platform for bars/clubs. Customers pay to request songs, DJs accept/reject via dashboard.
+Paid song request platform for bars and clubs. Nx monorepo.
 
 ## Tech Stack
+- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS (apps/frontend)
+- **Backend**: Python 3.10+, FastAPI, Pydantic (apps/backend)
+- **Database**: Supabase (PostgreSQL + Auth)
+- **Payments**: Stripe Connect for DJ payouts
+- **E2E**: Playwright (apps/frontend-e2e)
 
-- **Frontend**: Vite + React 18 (PWA), TypeScript, TailwindCSS
-- **Backend**: Python FastAPI + Supabase
-- **Payments**: Stripe
-- **Song Search**: Spotify Web API (metadata only)
+## Environment Variables
+- Frontend: `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- Backend: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`
+- Backend: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+- Backend: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
 
-## Key Concepts
-
-- `Session` — DJ starts a session at a venue, customers join via QR
-- `Request` — customer pays to submit, DJ accepts/rejects
-- No music playback — we only manage the queue
-
-## Conventions
-
-- API prefix: `/api`
-- Use Supabase for DB + real-time subscriptions
-- Frontend is PWA — no app store
-
-## Database Migrations
-
-Migration files in `supabase/migrations/` must use format: `<timestamp>_name.sql`
-
-```bash
-npx supabase db push   # Apply migrations to Supabase cloud
-```
-
-## Docs
-
-- [spec.md](docs/spec.md) — full product spec
-- [implementation-steps.md](docs/implementation-steps.md) — dev roadmap
+## Cross-directory Dependencies
+- Frontend calls backend via `apps/frontend/src/lib/api.ts` typed client
+- Both apps share Supabase auth (JWT tokens passed in Authorization header)
+- Stripe publishable key fetched from `/api/payments/config`

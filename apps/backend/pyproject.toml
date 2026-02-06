@@ -9,7 +9,8 @@ dependencies = [
     "stripe>=8.0.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
-    "slowapi>=0.1.9"
+    "slowapi>=0.1.9",
+    "PyJWT>=2.8.0"
 ]
 requires-python = ">=3.10"
 

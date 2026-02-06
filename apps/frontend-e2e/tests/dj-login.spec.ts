@@ -18,20 +18,22 @@ test.describe('DJ Login Page', () => {
     await expect(page.getByRole('link', { name: 'Register' })).toBeVisible();
   });
 
-  test('should show error message for invalid email', async ({ page }) => {
-    // Fill in invalid email
+  test('should show error message for invalid credentials', async ({ page }) => {
+    // Fill in invalid email and password
     await page.getByLabel('Email').fill('nonexistent@test.com');
+    await page.getByLabel('Password').fill('wrongpassword');
 
     // Submit form
     await page.getByRole('button', { name: /Login/i }).click();
 
     // Check for error message
-    await expect(page.getByText(/DJ not found/i)).toBeVisible();
+    await expect(page.getByText(/Invalid email or password/i)).toBeVisible();
   });
 
   test('should show loading state when logging in', async ({ page }) => {
-    // Fill in email
+    // Fill in email and password
     await page.getByLabel('Email').fill('test@test.com');
+    await page.getByLabel('Password').fill('testpassword');
 
     // Submit form and check loading state
     const loginButton = page.getByRole('button', { name: /Login/i });
@@ -42,9 +44,13 @@ test.describe('DJ Login Page', () => {
     await expect(page).toHaveURL(/\/dj/);
   });
 
-  test('should require email field', async ({ page }) => {
+  test('should require email and password fields', async ({ page }) => {
     const emailInput = page.getByLabel('Email');
     await expect(emailInput).toHaveAttribute('required');
     await expect(emailInput).toHaveAttribute('type', 'email');
+
+    const passwordInput = page.getByLabel('Password');
+    await expect(passwordInput).toHaveAttribute('required');
+    await expect(passwordInput).toHaveAttribute('type', 'password');
   });
 });

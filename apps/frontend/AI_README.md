@@ -1,24 +1,23 @@
-# AI_README: Frontend
+# Frontend - React SPA
 
-## Stack
+## Tech Stack
+- React 18, TypeScript, Vite 6, Tailwind CSS
+- React Router DOM 7, Supabase JS, Stripe React SDK
+- Vitest + Testing Library
 
-Vite + React 18 + TypeScript + TailwindCSS + PWA
+## Patterns
+- **Auth**: `useAuth()` hook from `contexts/AuthContext` for user/session/dj state
+- **API calls**: Use `api.*` from `lib/api.ts`, never raw fetch
+- **Error handling**: Throw `ApiError` or `NetworkError` from `lib/errors.ts`
+- **Realtime**: Supabase subscriptions via custom hooks (e.g., `useRequestsRealtime`)
+- **Exports**: Barrel files (`index.ts`) in components/, hooks/, lib/
 
-## Key Paths
+## Routes
+- `/join/:venueSlug` - Customer joins venue session
+- `/register` - DJ registration
+- `/login`, `/dj` - DJ login
+- `/dj/dashboard` - DJ dashboard (protected)
 
-- `/` — Home page
-- `/join/:venueSlug` — Customer entry point (QR scan lands here)
-- `/dj/*` — DJ dashboard (auth required)
-
-## Structure
-
-- `src/pages/` — Route components
-- `src/components/` — Reusable UI (to be added)
-- `src/hooks/` — Custom hooks (to be added)
-- `src/lib/` — API clients, utilities (to be added)
-
-## Conventions
-
-- Mobile-first, dark mode for DJ dashboard
-- Use Supabase realtime for live updates
-- Stripe Payment Request API for one-tap payments
+## Cross-directory Dependencies
+- Uses root Supabase types via `@supabase/supabase-js`
+- Shares API contract with backend (types in `lib/api.ts` mirror backend schemas)

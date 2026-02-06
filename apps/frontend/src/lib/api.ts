@@ -1,16 +1,50 @@
 import { ApiError, NetworkError } from './errors'
+import { supabase } from './supabase'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
-async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+/**
+ * Get the current auth token from Supabase
+ */
+async function getAuthToken(): Promise<string | null> {
+  if (!supabase) return null
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
+}
+
+/**
+ * Make an API request with optional authentication
+ */
+async function request<T>(
+  endpoint: string,
+  options?: RequestInit & { auth?: boolean }
+): Promise<T> {
   let res: Response
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(options?.headers || {}),
+  }
+
+  // Add auth token if requested or for DJ-related endpoints
+  const shouldAuth = options?.auth !== false && (
+    options?.auth === true ||
+    endpoint.startsWith('/djs/') ||
+    endpoint.startsWith('/sessions/') ||
+    endpoint.startsWith('/connect/')
+  )
+
+  if (shouldAuth) {
+    const token = await getAuthToken()
+    if (token) {
+      ;(headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
+    }
+  }
 
   try {
     res = await fetch(`${API_BASE}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
       ...options,
+      headers,
     })
   } catch (error) {
     // Network error (offline, DNS failure, CORS, etc.)
