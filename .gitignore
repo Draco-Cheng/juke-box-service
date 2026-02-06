@@ -40,6 +40,13 @@ testem.log
 # System Files
 .DS_Store
 Thumbs.db
+*.pem
+
+# Next.js
+.next/
+.vercel
+next-env.d.ts
+*.tsbuildinfo
 
 .nx/cache
 .nx/workspace-data
