@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         const dj = await loadDJProfile(session.user)
         setState({
           user: session.user,
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           dj,
           loading: false,
         })
-      } else if (event === 'SIGNED_OUT') {
+      } else if (event === 'SIGNED_OUT' || !session) {
         setState({
           user: null,
           session: null,
