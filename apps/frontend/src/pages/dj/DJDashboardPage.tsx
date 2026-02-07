@@ -80,7 +80,10 @@ export default function DJDashboardPage() {
 
   // Fetch DJ data
   const fetchData = useCallback(async () => {
-    if (!dj) return
+    if (!dj) {
+      setLoading(false)
+      return
+    }
 
     try {
       const [venuesData, sessionData] = await Promise.all([

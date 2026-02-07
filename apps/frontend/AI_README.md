@@ -12,6 +12,8 @@
 - **Realtime**: Supabase subscriptions via custom hooks (e.g., `useRequestsRealtime`)
 - **Exports**: Barrel files (`index.ts`) in components/, hooks/, lib/
 
+
+- **Exception**: Inside `onAuthStateChange` callbacks, use raw `fetch` with `session.access_token` to avoid `getSession()` deadlock
 ## Routes
 - `/join/:venueSlug` - Customer joins venue session
 - `/register` - DJ registration
