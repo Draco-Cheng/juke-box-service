@@ -16,6 +16,7 @@ export default function DJLoginPage() {
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return
     setLoading(true)
     setError(null)
 
@@ -35,6 +36,7 @@ export default function DJLoginPage() {
       return
     }
 
+    setLoading(false)
     navigate('/dj/dashboard')
   }
 
