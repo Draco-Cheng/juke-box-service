@@ -14,6 +14,7 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (loading) return
     setLoading(true)
     setError(null)
 
@@ -37,12 +38,14 @@ export default function RegisterPage() {
       const msg = signUpError.message.toLowerCase()
       if (msg.includes('already registered')) {
         setError('An account with this email already exists.')
+      } else if (msg.includes('invalid') && msg.includes('email')) {
+        setError('Please enter a valid email address.')
       } else if (msg.includes('rate_limit') || msg.includes('rate limit')) {
         setError('Too many attempts. Please wait a few minutes before trying again.')
       } else if (msg.includes('not configured') || msg.includes('unavailable')) {
         setError('Registration service temporarily unavailable. Please try again later.')
       } else {
-        setError('Registration failed. Please try again.')
+        setError(`Registration failed: ${signUpError.message}`)
       }
       setLoading(false)
       return
