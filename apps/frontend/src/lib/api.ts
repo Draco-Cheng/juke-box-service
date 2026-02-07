@@ -52,6 +52,10 @@ async function request<T>(
   }
 
   if (!res.ok) {
+    // Session expired - force sign out so user returns to login
+    if (res.status === 401 && shouldAuth) {
+      await supabase?.auth.signOut()
+    }
     const errorData = await res.json().catch(() => ({ detail: 'Request failed' }))
     const message = errorData.detail || 'Request failed'
     throw new ApiError(res.status, message)
