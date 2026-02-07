@@ -29,12 +29,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   // Load DJ profile for authenticated user
-  const loadDJProfile = async (user: User): Promise<DJ | null> => {
+  // Uses fetch directly to avoid getSession() deadlock inside onAuthStateChange
+  const loadDJProfile = async (user: User, accessToken?: string): Promise<DJ | null> => {
     try {
+      if (accessToken) {
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+        const res = await fetch(`${API_BASE}/djs/by-email/${user.email}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        })
+        if (!res.ok) return null
+        return await res.json()
+      }
       const dj = await api.getDJByEmail(user.email!)
       return dj
     } catch {
-      // DJ profile doesn't exist yet
       return null
     }
   }
@@ -46,32 +57,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const dj = await loadDJProfile(session.user)
-        setState({
-          user: session.user,
-          session,
-          dj,
-          loading: false,
-        })
-      } else {
-        setState(prev => ({ ...prev, loading: false }))
-      }
-    })
+    let activeRequestId = 0
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        const dj = await loadDJProfile(session.user)
-        setState({
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const requestId = ++activeRequestId
+
+      if (session?.user) {
+        // Set user/session immediately, load DJ profile in background
+        setState(prev => ({
+          ...prev,
           user: session.user,
           session,
-          dj,
-          loading: false,
-        })
-      } else if (event === 'SIGNED_OUT' || !session) {
+          loading: !prev.dj,
+        }))
+
+        // Pass access_token directly to avoid getSession() deadlock
+        const dj = await loadDJProfile(session.user, session.access_token)
+
+        // Only update if this is still the latest request
+        if (requestId === activeRequestId) {
+          setState({
+            user: session.user,
+            session,
+            dj,
+            loading: false,
+          })
+        }
+      } else {
         setState({
           user: null,
           session: null,
@@ -120,13 +132,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: new Error('Supabase not configured') }
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (error) {
       return { error }
+    }
+
+    // Load DJ profile immediately so state is ready before navigate
+    if (data.session?.user) {
+      const dj = await loadDJProfile(data.session.user, data.session.access_token)
+      setState({
+        user: data.session.user,
+        session: data.session,
+        dj,
+        loading: false,
+      })
     }
 
     return { error: null }
@@ -150,7 +173,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     if (!supabase) return
 
-    await supabase.auth.signOut()
+    // Use scope: 'local' to avoid server-side revoke failures blocking logout
+    try {
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch {
+      // Even if signOut fails, clear local state
+    }
     localStorage.removeItem('dj')
     setState({
       user: null,

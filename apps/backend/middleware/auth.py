@@ -24,7 +24,7 @@ def get_jwt_secret():
 
 
 def _get_jwks_client():
-    """Get JWKS client for RS256 verification (Supabase cloud)"""
+    """Get JWKS client for asymmetric key verification (Supabase cloud)"""
     supabase_url = os.getenv("SUPABASE_URL", "")
     if not supabase_url:
         return None
