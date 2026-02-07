@@ -14,6 +14,8 @@
 
 
 - **Exception**: Inside `onAuthStateChange` callbacks, use raw `fetch` with `session.access_token` to avoid `getSession()` deadlock
+
+- **Env vars**: Use `env.*` from `lib/env.ts`, never `import.meta.env` directly. Runtime injection via `window.__ENV__` (container), build-time fallback (Vite dev)
 ## Routes
 - `/join/:venueSlug` - Customer joins venue session
 - `/register` - DJ registration

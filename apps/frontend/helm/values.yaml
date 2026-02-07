@@ -11,5 +11,8 @@ resources:
     memory: "128Mi"
     cpu: "100m"
 
-# Note: VITE_API_URL is baked into the frontend at build time
-# For production, set VITE_API_URL=/api in the CI/CD build step
+# Runtime env vars - injected into env-config.js at container startup
+env:
+  VITE_API_URL: "/api"
+  VITE_SUPABASE_URL: ""
+  VITE_SUPABASE_ANON_KEY: ""
