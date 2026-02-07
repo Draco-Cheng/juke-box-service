@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { env } from '../lib/env'
 import { api, DJ } from '../lib/api'
 
 interface AuthState {
@@ -33,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadDJProfile = async (user: User, accessToken?: string): Promise<DJ | null> => {
     try {
       if (accessToken) {
-        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+        const API_BASE = env.API_URL
         const res = await fetch(`${API_BASE}/djs/by-email/${user.email}`, {
           headers: {
             'Content-Type': 'application/json',
