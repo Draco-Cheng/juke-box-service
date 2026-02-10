@@ -352,43 +352,41 @@ class TestGetSessionRequests:
         assert data[2]["id"] == "req-1"  # 10:02
 
 
-class TestRefundLogic:
-    """Tests for refund processing logic."""
+class TestCancelPaymentLogic:
+    """Tests for cancel payment intent processing logic."""
 
-    def test_process_refund_success(self):
-        """Test successful refund processing."""
-        from routes.requests import process_refund
+    def test_cancel_payment_intent_success(self):
+        """Test successful payment intent cancellation."""
+        from routes.requests import cancel_payment_intent
 
-        with patch("routes.requests.stripe") as stripe_mock:
-            stripe_mock.Refund.create.return_value = MagicMock(
-                id="re_test",
-                status="succeeded"
-            )
+        with patch("routes.requests.stripe") as stripe_mock, \
+             patch("routes.requests.get_supabase") as mock_get_supabase:
+            stripe_mock.PaymentIntent.cancel.return_value = MagicMock()
+            stripe_mock.error.StripeError = Exception
+            mock_supabase = MagicMock()
+            mock_get_supabase.return_value = mock_supabase
 
             import asyncio
-            result = asyncio.get_event_loop().run_until_complete(
-                process_refund("pi_test123")
+            asyncio.get_event_loop().run_until_complete(
+                cancel_payment_intent("pi_test123")
             )
 
-            stripe_mock.Refund.create.assert_called_once_with(
-                payment_intent="pi_test123",
-                reason="requested_by_customer"
-            )
-            assert result.id == "re_test"
+            stripe_mock.PaymentIntent.cancel.assert_called_once_with("pi_test123")
+            mock_supabase.table.assert_called_once_with("payments")
 
-    def test_process_refund_stripe_error(self):
-        """Test refund processing with Stripe error."""
-        from routes.requests import process_refund
+    def test_cancel_payment_intent_stripe_error(self):
+        """Test cancel payment intent with Stripe error."""
+        from routes.requests import cancel_payment_intent
         import stripe
 
         with patch("routes.requests.stripe") as stripe_mock:
-            stripe_mock.Refund.create.side_effect = stripe.error.StripeError(
-                "Refund failed"
+            stripe_mock.PaymentIntent.cancel.side_effect = stripe.error.StripeError(
+                "Cancel failed"
             )
             stripe_mock.error = stripe.error
 
             import asyncio
-            with pytest.raises(Exception, match="Stripe refund error"):
+            with pytest.raises(Exception, match="Stripe cancel error"):
                 asyncio.get_event_loop().run_until_complete(
-                    process_refund("pi_test123")
+                    cancel_payment_intent("pi_test123")
                 )
