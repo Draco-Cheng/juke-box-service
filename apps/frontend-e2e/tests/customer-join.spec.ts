@@ -176,7 +176,7 @@ test.describe('Customer Join Page with Active Session', () => {
     await expect(page.getByPlaceholder(/Message to DJ/i)).toBeVisible();
 
     // Check submit button
-    await expect(page.getByRole('button', { name: /Pay €2 & Submit/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Authorize €2 & Submit/i })).toBeVisible();
   });
 
   test('should display request queue', async ({ page }) => {
@@ -208,19 +208,19 @@ test.describe('Customer Join Page with Active Session', () => {
     await priorityButton.click();
 
     // Submit button should update price
-    await expect(page.getByRole('button', { name: /Pay €5 & Submit/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Authorize €5 & Submit/i })).toBeVisible();
 
     // Click ASAP
     await asapButton.click();
 
     // Submit button should update price
-    await expect(page.getByRole('button', { name: /Pay €10 & Submit/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Authorize €10 & Submit/i })).toBeVisible();
 
     // Click normal
     await normalButton.click();
 
     // Submit button should update price
-    await expect(page.getByRole('button', { name: /Pay €2 & Submit/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Authorize €2 & Submit/i })).toBeVisible();
   });
 
   test('submit button should be disabled without song selection', async ({ page }) => {
@@ -230,7 +230,7 @@ test.describe('Customer Join Page with Active Session', () => {
     await expect(page.getByText('Loading...')).not.toBeVisible({ timeout: 10000 });
 
     // Submit button should be disabled
-    const submitButton = page.getByRole('button', { name: /Pay €2 & Submit/i });
+    const submitButton = page.getByRole('button', { name: /Authorize €2 & Submit/i });
     await expect(submitButton).toBeDisabled();
   });
 });
