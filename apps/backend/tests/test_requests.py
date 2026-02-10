@@ -117,14 +117,15 @@ class TestUpdateRequest:
         data = response.json()
         assert data["status"] == "played"
 
-    def test_update_request_reject_triggers_refund(
+    def test_update_request_reject_triggers_cancel(
         self, client, mock_supabase, sample_request
     ):
-        """Test rejecting a request triggers a refund."""
+        """Test rejecting a request cancels the payment authorization."""
         current_chain = mock_supabase._create_chainable(sample_request)
 
         rejected_request = {**sample_request, "status": "rejected"}
         update_chain = mock_supabase._create_chainable([rejected_request])
+        payments_chain = mock_supabase._create_chainable([])
 
         call_count = [0]
 
@@ -132,23 +133,25 @@ class TestUpdateRequest:
             call_count[0] += 1
             if call_count[0] == 1:
                 return current_chain
+            if name == "payments":
+                return payments_chain
             return update_chain
 
         mock_supabase.table = MagicMock(side_effect=table_side_effect)
 
         with patch("routes.requests.get_supabase", return_value=mock_supabase), \
              patch("routes.requests.stripe") as stripe_mock:
-            stripe_mock.Refund.create.return_value = MagicMock(id="re_test")
+            stripe_mock.PaymentIntent.cancel.return_value = MagicMock()
+            stripe_mock.error.StripeError = Exception
 
             response = client.patch(
                 f"/api/requests/{sample_request['id']}",
                 json={"status": "rejected"}
             )
 
-            # Verify refund was attempted
-            stripe_mock.Refund.create.assert_called_once_with(
-                payment_intent=sample_request["stripe_payment_id"],
-                reason="requested_by_customer"
+            # Verify cancel was attempted instead of refund
+            stripe_mock.PaymentIntent.cancel.assert_called_once_with(
+                sample_request["stripe_payment_id"]
             )
 
         assert response.status_code == 200
@@ -157,7 +160,7 @@ class TestUpdateRequest:
     def test_update_request_reject_without_payment_id(
         self, client, mock_supabase, sample_request
     ):
-        """Test rejecting a request without stripe_payment_id doesn't attempt refund."""
+        """Test rejecting a request without stripe_payment_id doesn't attempt cancel."""
         # Remove payment ID
         sample_request["stripe_payment_id"] = None
         current_chain = mock_supabase._create_chainable(sample_request)
@@ -182,8 +185,8 @@ class TestUpdateRequest:
                 json={"status": "rejected"}
             )
 
-            # Verify refund was NOT attempted
-            stripe_mock.Refund.create.assert_not_called()
+            # Verify cancel was NOT attempted
+            stripe_mock.PaymentIntent.cancel.assert_not_called()
 
         assert response.status_code == 200
 
@@ -349,43 +352,41 @@ class TestGetSessionRequests:
         assert data[2]["id"] == "req-1"  # 10:02
 
 
-class TestRefundLogic:
-    """Tests for refund processing logic."""
+class TestCancelPaymentLogic:
+    """Tests for cancel payment intent processing logic."""
 
-    def test_process_refund_success(self):
-        """Test successful refund processing."""
-        from routes.requests import process_refund
+    def test_cancel_payment_intent_success(self):
+        """Test successful payment intent cancellation."""
+        from routes.requests import cancel_payment_intent
 
-        with patch("routes.requests.stripe") as stripe_mock:
-            stripe_mock.Refund.create.return_value = MagicMock(
-                id="re_test",
-                status="succeeded"
-            )
+        with patch("routes.requests.stripe") as stripe_mock, \
+             patch("routes.requests.get_supabase") as mock_get_supabase:
+            stripe_mock.PaymentIntent.cancel.return_value = MagicMock()
+            stripe_mock.error.StripeError = Exception
+            mock_supabase = MagicMock()
+            mock_get_supabase.return_value = mock_supabase
 
             import asyncio
-            result = asyncio.get_event_loop().run_until_complete(
-                process_refund("pi_test123")
+            asyncio.get_event_loop().run_until_complete(
+                cancel_payment_intent("pi_test123")
             )
 
-            stripe_mock.Refund.create.assert_called_once_with(
-                payment_intent="pi_test123",
-                reason="requested_by_customer"
-            )
-            assert result.id == "re_test"
+            stripe_mock.PaymentIntent.cancel.assert_called_once_with("pi_test123")
+            mock_supabase.table.assert_called_once_with("payments")
 
-    def test_process_refund_stripe_error(self):
-        """Test refund processing with Stripe error."""
-        from routes.requests import process_refund
+    def test_cancel_payment_intent_stripe_error(self):
+        """Test cancel payment intent with Stripe error."""
+        from routes.requests import cancel_payment_intent
         import stripe
 
         with patch("routes.requests.stripe") as stripe_mock:
-            stripe_mock.Refund.create.side_effect = stripe.error.StripeError(
-                "Refund failed"
+            stripe_mock.PaymentIntent.cancel.side_effect = stripe.error.StripeError(
+                "Cancel failed"
             )
             stripe_mock.error = stripe.error
 
             import asyncio
-            with pytest.raises(Exception, match="Stripe refund error"):
+            with pytest.raises(Exception, match="Stripe cancel error"):
                 asyncio.get_event_loop().run_until_complete(
-                    process_refund("pi_test123")
+                    cancel_payment_intent("pi_test123")
                 )

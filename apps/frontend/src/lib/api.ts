@@ -137,8 +137,9 @@ export interface Request {
   tier: 'normal' | 'priority' | 'asap'
   message: string | null
   amount: number
-  status: 'pending' | 'accepted' | 'rejected' | 'played'
+  status: 'pending' | 'accepted' | 'rejected' | 'played' | 'expired'
   customer_id: string | null
+  stripe_payment_id: string | null
   created_at: string
   updated_at: string
 }
@@ -160,8 +161,19 @@ export interface DJ {
   name: string
   email: string
   stripe_account_id: string | null
+  genres: string[]
+  rating: number
+  profile_image: string | null
   created_at: string
   updated_at: string
+}
+
+export interface LiveDJ {
+  dj: DJ
+  venue: Venue
+  session_id: string
+  listener_count: number
+  base_price: number
 }
 
 export interface SpotifyTrack {
@@ -218,6 +230,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(venue),
     }),
+  getLiveDJs: () => request<LiveDJ[]>('/djs/live', { auth: false }),
+  updateDJProfile: (djId: string, data: { genres?: string[]; profile_image?: string }) =>
+    request<DJ>(`/djs/${djId}/profile`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 
   // Sessions
   createSession: (venueId: string, djId: string) =>
@@ -249,6 +267,14 @@ export const api = {
     }),
   confirmPayment: (paymentIntentId: string) =>
     request<{ success: boolean; request: Request }>(`/payments/confirm-payment/${paymentIntentId}`, {
+      method: 'POST',
+    }),
+  capturePayment: (paymentIntentId: string) =>
+    request<{ success: boolean; payment_intent_id: string }>(`/payments/capture/${paymentIntentId}`, {
+      method: 'POST',
+    }),
+  cancelPayment: (paymentIntentId: string) =>
+    request<{ success: boolean; payment_intent_id: string }>(`/payments/cancel/${paymentIntentId}`, {
       method: 'POST',
     }),
 

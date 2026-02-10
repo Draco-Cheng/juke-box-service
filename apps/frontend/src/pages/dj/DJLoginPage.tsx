@@ -174,6 +174,13 @@ export default function DJLoginPage() {
             Register
           </Link>
         </p>
+
+        <Link
+          to="/"
+          className="block text-gray-500 hover:text-gray-300 text-sm text-center mt-4 transition"
+        >
+          &larr; Back to DropBeat
+        </Link>
       </div>
     </div>
   )

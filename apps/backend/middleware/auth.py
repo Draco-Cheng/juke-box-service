@@ -68,7 +68,8 @@ async def get_current_user(
                 signing_key.key,
                 algorithms=[alg],
                 audience="authenticated",
-                options={"verify_aud": True}
+                options={"verify_aud": True},
+                leeway=30,
             )
         else:
             # Supabase self-hosted / local uses HS256
@@ -78,7 +79,8 @@ async def get_current_user(
                 jwt_secret,
                 algorithms=["HS256"],
                 audience="authenticated",
-                options={"verify_aud": True}
+                options={"verify_aud": True},
+                leeway=30,
             )
 
         user_id = payload.get("sub")

@@ -2,12 +2,16 @@ from fastapi import APIRouter, HTTPException
 from typing import List
 from models import Request, RequestCreate, RequestUpdate
 from database import get_supabase
+from datetime import datetime, timedelta
 import stripe
 import os
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 router = APIRouter(prefix="/requests", tags=["requests"])
+
+# Authorization hold expires after ~7 days; we expire at 6 days for safety
+AUTHORIZATION_EXPIRY_DAYS = 6
 
 
 @router.post("/", response_model=Request)
@@ -52,19 +56,28 @@ async def update_request(request_id: str, update: RequestUpdate):
 
         current_request = current.data
 
-        from datetime import datetime
         update_data = {
             "status": update.status.value,
             "updated_at": datetime.utcnow().isoformat()
         }
 
-        # If rejecting, trigger refund
-        if update.status.value == "rejected" and current_request.get("stripe_payment_id"):
+        stripe_payment_id = current_request.get("stripe_payment_id")
+
+        # If marking as played, capture the authorized payment
+        if update.status.value == "played" and stripe_payment_id:
             try:
-                await process_refund(current_request["stripe_payment_id"])
-            except Exception as refund_error:
+                await capture_payment_intent(stripe_payment_id)
+            except Exception as capture_error:
+                # Log but don't fail the status update
+                print(f"Capture failed for {request_id}: {capture_error}")
+
+        # If rejecting, cancel the authorization (releases hold, no refund needed)
+        if update.status.value == "rejected" and stripe_payment_id:
+            try:
+                await cancel_payment_intent(stripe_payment_id)
+            except Exception as cancel_error:
                 # Log but don't fail the rejection
-                print(f"Refund failed for {request_id}: {refund_error}")
+                print(f"Cancel failed for {request_id}: {cancel_error}")
 
         result = (
             supabase.table("requests")
@@ -83,17 +96,66 @@ async def update_request(request_id: str, update: RequestUpdate):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-async def process_refund(stripe_payment_id: str):
-    """Process a full refund for a payment"""
+async def capture_payment_intent(stripe_payment_id: str):
+    """Capture an authorized payment"""
     try:
-        # Create refund for the payment intent
-        refund = stripe.Refund.create(
-            payment_intent=stripe_payment_id,
-            reason="requested_by_customer"  # DJ rejected = customer didn't get what they paid for
-        )
-        return refund
+        stripe.PaymentIntent.capture(stripe_payment_id)
+        # Update payment record status
+        supabase = get_supabase()
+        supabase.table("payments").update(
+            {"status": "captured"}
+        ).eq("stripe_payment_id", stripe_payment_id).execute()
     except stripe.error.StripeError as e:
-        raise Exception(f"Stripe refund error: {str(e)}")
+        raise Exception(f"Stripe capture error: {str(e)}")
+
+
+async def cancel_payment_intent(stripe_payment_id: str):
+    """Cancel an authorized payment (releases hold without refund)"""
+    try:
+        stripe.PaymentIntent.cancel(stripe_payment_id)
+        # Update payment record status
+        supabase = get_supabase()
+        supabase.table("payments").update(
+            {"status": "canceled"}
+        ).eq("stripe_payment_id", stripe_payment_id).execute()
+    except stripe.error.StripeError as e:
+        raise Exception(f"Stripe cancel error: {str(e)}")
+
+
+@router.post("/expire-stale")
+async def expire_stale_requests():
+    """Expire requests with authorization holds older than 6 days.
+    Should be called by a cron job periodically."""
+    try:
+        supabase = get_supabase()
+        cutoff = (datetime.utcnow() - timedelta(days=AUTHORIZATION_EXPIRY_DAYS)).isoformat()
+
+        # Find pending/accepted requests older than cutoff with stripe payments
+        stale = (
+            supabase.table("requests")
+            .select("*")
+            .in_("status", ["pending", "accepted"])
+            .not_.is_("stripe_payment_id", "null")
+            .lt("created_at", cutoff)
+            .execute()
+        )
+
+        expired_count = 0
+        for req in stale.data:
+            try:
+                await cancel_payment_intent(req["stripe_payment_id"])
+            except Exception as e:
+                print(f"Failed to cancel expired authorization for {req['id']}: {e}")
+
+            supabase.table("requests").update({
+                "status": "expired",
+                "updated_at": datetime.utcnow().isoformat()
+            }).eq("id", req["id"]).execute()
+            expired_count += 1
+
+        return {"expired_count": expired_count}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/session/{session_id}", response_model=List[Request])

@@ -17,6 +17,7 @@ class RequestStatus(str, Enum):
     ACCEPTED = "accepted"
     REJECTED = "rejected"
     PLAYED = "played"
+    EXPIRED = "expired"
 
 
 class SessionStatus(str, Enum):
@@ -101,10 +102,18 @@ class DJCreate(DJBase):
     user_id: Optional[str] = None
 
 
+class DJProfileUpdate(BaseModel):
+    genres: Optional[list[str]] = None
+    profile_image: Optional[str] = Field(None, max_length=500)
+
+
 class DJ(DJBase):
     id: str
     user_id: Optional[str]
     stripe_account_id: Optional[str]
+    genres: list[str] = Field(default_factory=list)
+    rating: float = 0
+    profile_image: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -183,6 +192,7 @@ class Request(RequestBase):
     session_id: str
     status: RequestStatus
     customer_id: Optional[str]
+    stripe_payment_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

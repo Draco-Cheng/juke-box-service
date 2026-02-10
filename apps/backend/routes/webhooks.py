@@ -30,8 +30,15 @@ async def stripe_webhook(request: Request):
     # Handle the event
     event_type = event["type"]
 
-    if event_type == "payment_intent.succeeded":
-        await handle_payment_succeeded(event["data"]["object"])
+    if event_type == "payment_intent.amount_capturable_updated":
+        # Authorization successful - create request with pending status
+        await handle_payment_authorized(event["data"]["object"])
+    elif event_type == "payment_intent.succeeded":
+        # Payment captured - update payment record to captured
+        await handle_payment_captured(event["data"]["object"])
+    elif event_type == "payment_intent.canceled":
+        # Authorization canceled - update payment record
+        await handle_payment_canceled(event["data"]["object"])
     elif event_type == "payment_intent.payment_failed":
         await handle_payment_failed(event["data"]["object"])
     elif event_type == "charge.refunded":
@@ -40,8 +47,8 @@ async def stripe_webhook(request: Request):
     return {"status": "ok"}
 
 
-async def handle_payment_succeeded(payment_intent: dict):
-    """Handle successful payment - create request and payment record"""
+async def handle_payment_authorized(payment_intent: dict):
+    """Handle authorized payment - create request and payment record (not yet captured)"""
     supabase = get_supabase()
     stripe_payment_id = payment_intent["id"]
     metadata = payment_intent.get("metadata", {})
@@ -79,22 +86,42 @@ async def handle_payment_succeeded(payment_intent: dict):
         platform_fee = int(amount * 0.15)
         dj_payout = amount - platform_fee
 
-        # Create payment record
+        # Create payment record with authorized status
         payment_data = {
             "request_id": request_id,
             "stripe_payment_id": stripe_payment_id,
             "amount": amount,
             "platform_fee": platform_fee,
             "dj_payout": dj_payout,
-            "status": "succeeded",
+            "status": "authorized",
         }
         supabase.table("payments").insert(payment_data).execute()
 
 
+async def handle_payment_captured(payment_intent: dict):
+    """Handle captured payment - update payment record to captured"""
+    supabase = get_supabase()
+    stripe_payment_id = payment_intent["id"]
+
+    # Update payment record status to captured
+    supabase.table("payments").update({
+        "status": "captured"
+    }).eq("stripe_payment_id", stripe_payment_id).execute()
+
+
+async def handle_payment_canceled(payment_intent: dict):
+    """Handle canceled authorization - update payment record"""
+    supabase = get_supabase()
+    stripe_payment_id = payment_intent["id"]
+
+    # Update payment record status to canceled
+    supabase.table("payments").update({
+        "status": "canceled"
+    }).eq("stripe_payment_id", stripe_payment_id).execute()
+
+
 async def handle_payment_failed(payment_intent: dict):
     """Handle failed payment - log for debugging"""
-    # For now, just log the failure
-    # In production, you might want to notify the user or retry
     stripe_payment_id = payment_intent["id"]
     metadata = payment_intent.get("metadata", {})
 
@@ -115,5 +142,3 @@ async def handle_charge_refunded(charge: dict):
     supabase.table("payments").update({
         "status": "refunded"
     }).eq("stripe_payment_id", payment_intent_id).execute()
-
-    print(f"Refund processed for payment: {payment_intent_id}")
