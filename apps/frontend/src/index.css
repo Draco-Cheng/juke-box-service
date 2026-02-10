@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,8 +8,8 @@
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #213547;
-  background-color: #ffffff;
+  color: #e5e7eb;
+  background-color: #0d0f14;
 }
 
 body {
@@ -16,10 +18,8 @@ body {
   min-height: 100vh;
 }
 
-/* Dark mode for DJ dashboard */
-.dark {
-  color: #ffffff;
-  background-color: #0a0a0a;
+.font-mono {
+  font-family: 'Space Mono', monospace;
 }
 
 /* Toast animation */

@@ -213,7 +213,7 @@ class TestConfirmPayment:
             response = client.post("/api/payments/confirm-payment/pi_test123")
 
         assert response.status_code == 400
-        assert "Payment not completed" in response.json()["detail"]
+        assert "Payment not authorized" in response.json()["detail"]
 
     def test_confirm_payment_idempotency(
         self, client, mock_supabase, sample_request

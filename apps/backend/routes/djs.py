@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import List
-from models import DJ, DJCreate, Venue, VenueCreate
+from models import DJ, DJCreate, DJProfileUpdate, Venue, VenueCreate
 from database import get_supabase
 from middleware import limiter, RateLimits, require_auth, AuthenticatedUser
 
@@ -35,6 +35,50 @@ async def get_dj_by_email(request: Request, email: str):
         return result.data
     except Exception:
         raise HTTPException(status_code=404, detail="DJ not found")
+
+
+@router.get("/live")
+async def get_live_djs():
+    """Get all DJs currently live with their active sessions"""
+    try:
+        supabase = get_supabase()
+
+        # Get all active sessions with DJ and venue info
+        sessions = (
+            supabase.table("sessions")
+            .select("*, djs(*), venues(*)")
+            .eq("status", "active")
+            .execute()
+        )
+
+        live_djs = []
+        for session in sessions.data:
+            dj = session.get("djs")
+            venue = session.get("venues")
+            if not dj or not venue:
+                continue
+
+            # Count requests for this session as listener proxy
+            requests = (
+                supabase.table("requests")
+                .select("id", count="exact")
+                .eq("session_id", session["id"])
+                .execute()
+            )
+
+            pricing = venue.get("settings", {}).get("pricing", {})
+
+            live_djs.append({
+                "dj": dj,
+                "venue": venue,
+                "session_id": session["id"],
+                "listener_count": requests.count or 0,
+                "base_price": pricing.get("normal", 200),
+            })
+
+        return live_djs
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/me", response_model=DJ)
@@ -202,6 +246,53 @@ async def create_dj_venue(
         }).execute()
 
         return new_venue
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/{dj_id}/profile", response_model=DJ)
+async def update_dj_profile(
+    dj_id: str,
+    profile: DJProfileUpdate,
+    user: AuthenticatedUser = Depends(require_auth),
+):
+    """Update DJ profile (genres, profile_image)"""
+    try:
+        supabase = get_supabase()
+
+        # Verify the DJ belongs to this user
+        dj_check = (
+            supabase.table("djs")
+            .select("email")
+            .eq("id", dj_id)
+            .single()
+            .execute()
+        )
+        if not dj_check.data or dj_check.data.get("email") != user.email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        update_data = {}
+        if profile.genres is not None:
+            update_data["genres"] = profile.genres
+        if profile.profile_image is not None:
+            update_data["profile_image"] = profile.profile_image
+
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        result = (
+            supabase.table("djs")
+            .update(update_data)
+            .eq("id", dj_id)
+            .execute()
+        )
+
+        if not result.data:
+            raise HTTPException(status_code=404, detail="DJ not found")
+
+        return result.data[0]
     except HTTPException:
         raise
     except Exception as e:

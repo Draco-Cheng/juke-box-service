@@ -1,6 +1,6 @@
-# DJ Request - Implementation Steps
+# DropBeat - Implementation Steps
 
-This document outlines the step-by-step implementation plan for building the DJ Request MVP.
+This document outlines the step-by-step implementation plan for building the DropBeat platform.
 
 ---
 
@@ -129,7 +129,7 @@ This document outlines the step-by-step implementation plan for building the DJ 
   - "Your Request" card with realtime status updates
   - Color-coded status: pending (yellow), accepted (blue), played (green), rejected (red)
 - [x] Show rejection reason if applicable
-  - Displays "Skipped - Refunded" with refund message
+  - Displays "Skipped" with authorization release message
 
 ### 2.6 PWA Features
 - [x] Configure vite-plugin-pwa
@@ -187,19 +187,26 @@ This document outlines the step-by-step implementation plan for building the DJ 
 ### 4.3 Payment Processing (Advanced) ✅
 - [x] Configure destination charges for DJ payout (in payments.py)
 - [x] Set up application fee splitting (15% platform fee)
-- [x] Handle payment webhooks (`payment_intent.succeeded`, `failed`)
+- [x] Handle payment webhooks
   - Created `/api/webhooks/stripe` endpoint
   - Added `stripe_payment_id` column to requests table (migration)
   - Idempotency check to prevent duplicate processing
   - Fallback: `/confirm-payment` endpoint still works without webhook
 
-### 4.4 Refunds ✅
-- [x] Implement auto-refund for rejected requests
-  - Triggered automatically when DJ rejects a request
-  - Uses `stripe.Refund.create()` with the payment_intent
-- [x] Handle refund webhook events
-  - Added `charge.refunded` handler in webhooks.py
-  - Updates payment record status to "refunded"
+### 4.4 Payment Hold/Capture ✅ (Replaced Refunds)
+- [x] Switched to manual capture (`capture_method='manual'`)
+  - Payment is **authorized** (held) on request submission
+  - Payment is **captured** (charged) when DJ marks as played
+  - Payment is **canceled** (released) when DJ rejects — no charge, no refund fees
+- [x] Handle webhook events
+  - `payment_intent.amount_capturable_updated` → authorization success
+  - `payment_intent.succeeded` → capture confirmed
+  - `payment_intent.canceled` → hold released
+  - `charge.refunded` → legacy refund handling
+- [x] Authorization expiry handling
+  - `POST /api/requests/expire-stale` endpoint (cron-triggered)
+  - Auto-cancels holds older than 6 days (Stripe limit is ~7 days)
+  - New request status: `expired`
 
 ---
 
@@ -253,8 +260,8 @@ This document outlines the step-by-step implementation plan for building the DJ 
 
 ---
 
-## Phase 7: Polish & Launch
-**Status: IN PROGRESS**
+## Phase 7: Polish & Launch ✅
+**Status: COMPLETE**
 
 ### 7.1 Error Handling ✅
 - [x] Global error boundaries
@@ -304,6 +311,42 @@ This document outlines the step-by-step implementation plan for building the DJ 
 
 ---
 
+## Phase 8: DropBeat UI Redesign ✅
+**Status: COMPLETE**
+
+### 8.1 DJ Discovery Homepage ✅
+- [x] Rewrite `HomePage.tsx` as DJ discovery page
+  - App branding: DropBeat (purple accent)
+  - Dark theme (#0d0f14 background)
+  - Bottom tab navigation: DJs / Requests / DJ Mode
+- [x] DJs tab: live DJ cards with avatar, genres, rating, listeners, venue, price
+  - Click navigates to `/join/{venue.slug}`
+- [x] Requests tab: user's past requests from localStorage
+- [x] DJ Mode tab: navigates to `/dj`
+
+### 8.2 Backend DJ Discovery API ✅
+- [x] `GET /api/djs/live` — public endpoint returning live DJs with venue/session info
+- [x] `PATCH /api/djs/{dj_id}/profile` — update DJ genres and profile image
+- [x] DB migration: `djs` table gains `genres`, `rating`, `profile_image` columns
+
+### 8.3 DJ Profile Editing ✅
+- [x] Profile editor modal in DJ Dashboard
+  - Genre multi-select (18 available genres)
+  - Profile image URL input
+- [x] `DJProfileUpdate` Pydantic model
+
+### 8.4 Design System Updates ✅
+- [x] Fonts: Inter (UI) + Space Mono (prices/monospace)
+- [x] HTML meta: title, description, theme-color updated to DropBeat
+- [x] Frontend env: `VITE_STRIPE_PUBLISHABLE_KEY` added to `docker-entrypoint.sh`
+
+### 8.5 Documentation Updates ✅
+- [x] `apps/backend/README.md` — full endpoint listing (31 endpoints)
+- [x] `apps/frontend/README.md` — features, design, env vars
+- [x] `AI_README.md` — DropBeat branding, manual capture, env vars
+
+---
+
 ## Milestone Checklist
 
 | Milestone | Deliverable | Status |
@@ -311,10 +354,12 @@ This document outlines the step-by-step implementation plan for building the DJ 
 | M0 | Project scaffolding | ✅ Done |
 | M1 | Backend APIs functional | ✅ Done |
 | M2 | Customer can submit request | ✅ Done |
-| M3 | Payments work | ✅ Done |
+| M3 | Payments work (manual capture) | ✅ Done |
 | M4 | DJ can manage requests | ✅ Done |
 | M5 | Deployment infrastructure | ✅ Done |
-| M6 | Production ready | ⏳ In Progress |
+| M6 | Error handling, security, testing | ✅ Done |
+| M7 | DropBeat UI redesign + DJ discovery | ✅ Done |
+| M8 | Production deployment | ⏳ Pending |
 
 ---
 
@@ -324,13 +369,16 @@ This document outlines the step-by-step implementation plan for building the DJ 
 2. ~~**Build backend API endpoints** for sessions/requests/venues~~ ✅
 3. ~~**Connect frontend to backend** - fetch venue, display queue~~ ✅
 4. ~~**Test core loop** - customer submits request, DJ sees it~~ ✅
-5. ~~**Add Stripe payments**~~ ✅ (Basic integration done)
+5. ~~**Add Stripe payments**~~ ✅ - Manual capture (hold → capture/cancel)
 6. ~~**Complete Stripe Connect**~~ ✅ - DJ onboarding and payout splitting
 7. ~~**Add Supabase Realtime**~~ ✅ - Replace polling with WebSocket subscriptions
 8. ~~**Integrate Spotify API**~~ ✅ - Song search functionality
-9. ~~**Add Payment Webhooks**~~ ✅ - Webhook endpoint created (local testing requires Stripe CLI)
+9. ~~**Add Payment Webhooks**~~ ✅ - Authorization, capture, cancel events
 10. ~~**Set up deployment infrastructure**~~ ✅ - Kubernetes + Helm + CI/CD
-11. **Deploy to production** - Configure cloud K8s cluster and secrets
+11. ~~**DropBeat UI redesign**~~ ✅ - DJ discovery homepage, profile editing
+12. **Deploy to production** - Configure cloud K8s cluster and secrets
+13. **Run DB migration** - Apply `20250210000000_dj_metadata_and_payment_states.sql`
+14. **Test payment hold flow** - Verify with Stripe test cards + `stripe listen`
 
 ---
 
