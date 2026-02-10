@@ -24,6 +24,8 @@ export function useMyRequestStatus({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
+  const onStatusChangeRef = useRef(onStatusChange)
+  onStatusChangeRef.current = onStatusChange
 
   // Fetch request by ID
   const fetchRequest = useCallback(async () => {
@@ -79,7 +81,7 @@ export function useMyRequestStatus({
         (payload) => {
           const updatedRequest = payload.new as SongRequest
           setRequest(updatedRequest)
-          onStatusChange?.(updatedRequest)
+          onStatusChangeRef.current?.(updatedRequest)
         }
       )
       .subscribe((status) => {
@@ -99,7 +101,7 @@ export function useMyRequestStatus({
         channelRef.current = null
       }
     }
-  }, [requestId, fetchRequest, onStatusChange])
+  }, [requestId, fetchRequest])
 
   return {
     request,
