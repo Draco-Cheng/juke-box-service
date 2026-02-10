@@ -129,10 +129,11 @@ async def create_payment_intent(request: Request, payment_request: CreatePayment
         # Calculate platform fee
         platform_fee = int(payment_request.amount * PLATFORM_FEE_PERCENT / 100)
 
-        # Create PaymentIntent
+        # Create PaymentIntent with manual capture (authorize only, capture on play)
         payment_intent_params = {
             "amount": payment_request.amount,
             "currency": "eur",
+            "capture_method": "manual",
             "metadata": {
                 "session_id": payment_request.session_id,
                 "song_title": payment_request.song_title,
@@ -166,13 +167,14 @@ async def create_payment_intent(request: Request, payment_request: CreatePayment
 @router.post("/confirm-payment/{payment_intent_id}")
 @limiter.limit(RateLimits.PAYMENT)
 async def confirm_payment(request: Request, payment_intent_id: str):
-    """Confirm payment and create the song request"""
+    """Confirm authorized payment and create the song request"""
     try:
-        # Retrieve PaymentIntent to verify it's paid
+        # Retrieve PaymentIntent to verify it's authorized
         payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
 
-        if payment_intent.status != "succeeded":
-            raise HTTPException(status_code=400, detail="Payment not completed")
+        # With manual capture: status is "requires_capture" after successful authorization
+        if payment_intent.status not in ("requires_capture", "succeeded"):
+            raise HTTPException(status_code=400, detail="Payment not authorized")
 
         metadata = payment_intent.metadata
         supabase = get_supabase()
@@ -208,6 +210,40 @@ async def confirm_payment(request: Request, payment_intent_id: str):
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/capture/{payment_intent_id}")
+async def capture_payment(request: Request, payment_intent_id: str):
+    """Capture an authorized payment when song is played"""
+    try:
+        payment_intent = stripe.PaymentIntent.capture(payment_intent_id)
+
+        # Update payment record status if exists
+        supabase = get_supabase()
+        supabase.table("payments").update(
+            {"status": "captured"}
+        ).eq("stripe_payment_id", payment_intent_id).execute()
+
+        return {"success": True, "payment_intent_id": payment_intent.id}
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/cancel/{payment_intent_id}")
+async def cancel_payment(request: Request, payment_intent_id: str):
+    """Cancel an authorized payment (releases hold without refund)"""
+    try:
+        payment_intent = stripe.PaymentIntent.cancel(payment_intent_id)
+
+        # Update payment record status if exists
+        supabase = get_supabase()
+        supabase.table("payments").update(
+            {"status": "canceled"}
+        ).eq("stripe_payment_id", payment_intent_id).execute()
+
+        return {"success": True, "payment_intent_id": payment_intent.id}
+    except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 

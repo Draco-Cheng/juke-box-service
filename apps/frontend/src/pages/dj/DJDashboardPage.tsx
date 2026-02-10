@@ -52,6 +52,12 @@ export default function DJDashboardPage() {
   const [blockedArtistsInput, setBlockedArtistsInput] = useState('')
   const [venueLoading, setVenueLoading] = useState(false)
 
+  // DJ Profile state
+  const [showProfileEditor, setShowProfileEditor] = useState(false)
+  const [profileGenres, setProfileGenres] = useState<string[]>([])
+  const [profileImage, setProfileImage] = useState('')
+  const [profileLoading, setProfileLoading] = useState(false)
+
   // Realtime subscription for requests
   const {
     requests,
@@ -230,6 +236,42 @@ export default function DJDashboardPage() {
     }
   }
 
+  const handleEditProfile = () => {
+    if (dj) {
+      setProfileGenres(dj.genres || [])
+      setProfileImage(dj.profile_image || '')
+      setShowProfileEditor(true)
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    if (!dj) return
+    setProfileLoading(true)
+    try {
+      await api.updateDJProfile(dj.id, {
+        genres: profileGenres,
+        profile_image: profileImage.trim() || undefined,
+      })
+      setShowProfileEditor(false)
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to update profile')
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  const AVAILABLE_GENRES = [
+    'House', 'Deep House', 'Techno', 'Electronic', 'Hip-Hop', 'R&B',
+    'Drum & Bass', 'Jungle', 'Disco', 'Funk', 'Pop', 'Rock',
+    'Jazz', 'Latin', 'Reggaeton',
+  ]
+
+  const toggleGenre = (genre: string) => {
+    setProfileGenres(prev =>
+      prev.includes(genre) ? prev.filter(g => g !== genre) : [...prev, genre]
+    )
+  }
+
   const handleShowQR = (venue: Venue) => {
     setQrVenue(venue)
   }
@@ -320,12 +362,20 @@ export default function DJDashboardPage() {
               </p>
             )}
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-gray-400 hover:text-white text-sm"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleEditProfile}
+              className="text-gray-400 hover:text-white text-sm"
+            >
+              Profile
+            </button>
+            <button
+              onClick={handleLogout}
+              className="text-gray-400 hover:text-white text-sm"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -668,6 +718,65 @@ export default function DJDashboardPage() {
           </div>
         )}
 
+        {/* Profile Editor Modal */}
+        {showProfileEditor && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md my-8">
+              <h2 className="text-xl font-semibold mb-4">DJ Profile</h2>
+
+              {/* Genres */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Genres</h3>
+                <div className="flex flex-wrap gap-2">
+                  {AVAILABLE_GENRES.map((genre) => (
+                    <button
+                      key={genre}
+                      type="button"
+                      onClick={() => toggleGenre(genre)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                        profileGenres.includes(genre)
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      }`}
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Profile Image */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Profile Image URL</h3>
+                <input
+                  type="url"
+                  value={profileImage}
+                  onChange={(e) => setProfileImage(e.target.value)}
+                  placeholder="https://example.com/photo.jpg"
+                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Paste a URL to your profile photo</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowProfileEditor(false)}
+                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={profileLoading}
+                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg font-semibold transition"
+                >
+                  {profileLoading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Active session */}
         {activeSession && (
           <>
@@ -709,9 +818,9 @@ export default function DJDashboardPage() {
               </div>
               <div className="bg-gray-900 rounded-lg p-4 text-center">
                 <p className="text-2xl font-bold">
-                  €{(requests.reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(0)}
+                  €{(playedRequests.reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(0)}
                 </p>
-                <p className="text-sm text-gray-400">Earnings</p>
+                <p className="text-sm text-gray-400">Captured</p>
               </div>
             </div>
 
@@ -754,6 +863,22 @@ export default function DJDashboardPage() {
                         <p className="text-gray-400 text-sm mb-3 italic">"{request.message}"</p>
                       )}
 
+                      {/* Expiry warning for old requests */}
+                      {(() => {
+                        const ageMs = Date.now() - new Date(request.created_at).getTime()
+                        const ageDays = ageMs / (1000 * 60 * 60 * 24)
+                        if (ageDays > 5) {
+                          return (
+                            <div className="bg-orange-900/50 border border-orange-600 rounded p-2 mb-3">
+                              <p className="text-orange-300 text-xs">
+                                Authorization expires soon. Play or skip this request.
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      })()}
+
                       <div className="flex gap-2">
                         {request.status === 'pending' && (
                           <>
@@ -776,7 +901,7 @@ export default function DJDashboardPage() {
                             onClick={() => handleRequestAction(request.id, 'played')}
                             className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold text-sm transition"
                           >
-                            Mark as Played
+                            Mark as Played & Charge
                           </button>
                         )}
                       </div>

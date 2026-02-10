@@ -109,7 +109,7 @@ function PaymentForm({
           disabled={!stripe || processing}
           className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 transition"
         >
-          {processing ? 'Processing...' : 'Pay Now'}
+          {processing ? 'Processing...' : 'Authorize Payment'}
         </button>
       </div>
     </form>
@@ -156,7 +156,9 @@ export default function JoinPage() {
       } else if (updatedRequest.status === 'played') {
         console.log('Your song is playing!')
       } else if (updatedRequest.status === 'rejected') {
-        console.log('Your request was skipped. Refund initiated.')
+        console.log('Your request was skipped. Authorization released.')
+      } else if (updatedRequest.status === 'expired') {
+        console.log('Your request expired. Authorization released.')
       }
     },
   })
@@ -312,9 +314,12 @@ export default function JoinPage() {
             {/* Payment Form */}
             {showPayment && clientSecret && stripePromise && paymentIntentId ? (
               <div className="bg-gray-800 rounded-lg p-4 shadow-sm mb-4 border border-gray-700">
-                <h2 className="font-semibold mb-3">Complete Payment</h2>
-                <p className="text-gray-400 text-sm mb-4">
+                <h2 className="font-semibold mb-3">Authorize Payment</h2>
+                <p className="text-gray-400 text-sm mb-2">
                   {songTitle} {songArtist && `- ${songArtist}`}
+                </p>
+                <p className="text-gray-500 text-xs mb-4">
+                  Your card will be authorized now. You'll only be charged if the DJ plays your song.
                 </p>
                 <Elements
                   stripe={stripePromise}
@@ -336,37 +341,52 @@ export default function JoinPage() {
               {myRequest && (
                 <div className={`rounded-lg p-4 shadow-sm mb-4 ${
                   myRequest.status === 'played'
-                    ? 'bg-green-50 border border-green-200'
+                    ? 'bg-green-900/50 border border-green-700'
                     : myRequest.status === 'rejected'
-                      ? 'bg-red-50 border border-red-200'
-                      : myRequest.status === 'accepted'
-                        ? 'bg-blue-50 border border-blue-200'
-                        : 'bg-yellow-50 border border-yellow-200'
+                      ? 'bg-red-900/50 border border-red-700'
+                      : myRequest.status === 'expired'
+                        ? 'bg-gray-800 border border-gray-600'
+                        : myRequest.status === 'accepted'
+                          ? 'bg-blue-900/50 border border-blue-700'
+                          : 'bg-yellow-900/50 border border-yellow-700'
                 }`}>
                   <div className="flex items-center justify-between mb-2">
                     <h2 className="font-semibold">Your Request</h2>
                     <span className={`text-xs px-2 py-1 rounded font-medium ${
                       myRequest.status === 'played'
-                        ? 'bg-green-200 text-green-800'
+                        ? 'bg-green-800 text-green-200'
                         : myRequest.status === 'rejected'
-                          ? 'bg-red-200 text-red-800'
-                          : myRequest.status === 'accepted'
-                            ? 'bg-blue-200 text-blue-800'
-                            : 'bg-yellow-200 text-yellow-800'
+                          ? 'bg-red-800 text-red-200'
+                          : myRequest.status === 'expired'
+                            ? 'bg-gray-700 text-gray-300'
+                            : myRequest.status === 'accepted'
+                              ? 'bg-blue-800 text-blue-200'
+                              : 'bg-yellow-800 text-yellow-200'
                     }`}>
                       {myRequest.status === 'pending' && 'Waiting for DJ'}
                       {myRequest.status === 'accepted' && 'Coming up!'}
-                      {myRequest.status === 'played' && 'Played!'}
-                      {myRequest.status === 'rejected' && 'Skipped - Refunded'}
+                      {myRequest.status === 'played' && 'Played & Charged'}
+                      {myRequest.status === 'rejected' && 'Skipped'}
+                      {myRequest.status === 'expired' && 'Expired'}
                     </span>
                   </div>
                   <p className="font-medium">{myRequest.song_title}</p>
                   {myRequest.song_artist && (
-                    <p className="text-sm text-gray-600">{myRequest.song_artist}</p>
+                    <p className="text-sm text-gray-400">{myRequest.song_artist}</p>
                   )}
                   {myRequest.status === 'rejected' && (
-                    <p className="text-sm text-red-600 mt-2">
-                      Your payment has been refunded.
+                    <p className="text-sm text-red-400 mt-2">
+                      The payment hold has been released. You were not charged.
+                    </p>
+                  )}
+                  {myRequest.status === 'expired' && (
+                    <p className="text-sm text-gray-400 mt-2">
+                      The authorization expired. You were not charged.
+                    </p>
+                  )}
+                  {myRequest.status === 'pending' && (
+                    <p className="text-sm text-yellow-400/70 mt-2">
+                      Your card has been authorized. You'll only be charged if the DJ plays your song.
                     </p>
                   )}
                 </div>
@@ -424,7 +444,7 @@ export default function JoinPage() {
                   disabled={submitting || !songTitle.trim()}
                   className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 transition"
                 >
-                  {submitting ? 'Loading...' : `Pay €${(getVenuePricing(venue)[tier] / 100).toFixed(0)} & Submit`}
+                  {submitting ? 'Loading...' : `Authorize €${(getVenuePricing(venue)[tier] / 100).toFixed(0)} & Submit`}
                 </button>
               </form>
               </>
@@ -468,7 +488,9 @@ export default function JoinPage() {
                                 ? 'bg-blue-900 text-blue-300'
                                 : req.status === 'rejected'
                                   ? 'bg-red-900 text-red-300'
-                                  : 'bg-gray-600 text-gray-300'
+                                  : req.status === 'expired'
+                                    ? 'bg-gray-700 text-gray-400'
+                                    : 'bg-gray-600 text-gray-300'
                           }`}
                         >
                           {req.status}
