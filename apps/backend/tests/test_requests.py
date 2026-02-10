@@ -117,14 +117,15 @@ class TestUpdateRequest:
         data = response.json()
         assert data["status"] == "played"
 
-    def test_update_request_reject_triggers_refund(
+    def test_update_request_reject_triggers_cancel(
         self, client, mock_supabase, sample_request
     ):
-        """Test rejecting a request triggers a refund."""
+        """Test rejecting a request cancels the payment authorization."""
         current_chain = mock_supabase._create_chainable(sample_request)
 
         rejected_request = {**sample_request, "status": "rejected"}
         update_chain = mock_supabase._create_chainable([rejected_request])
+        payments_chain = mock_supabase._create_chainable([])
 
         call_count = [0]
 
@@ -132,23 +133,25 @@ class TestUpdateRequest:
             call_count[0] += 1
             if call_count[0] == 1:
                 return current_chain
+            if name == "payments":
+                return payments_chain
             return update_chain
 
         mock_supabase.table = MagicMock(side_effect=table_side_effect)
 
         with patch("routes.requests.get_supabase", return_value=mock_supabase), \
              patch("routes.requests.stripe") as stripe_mock:
-            stripe_mock.Refund.create.return_value = MagicMock(id="re_test")
+            stripe_mock.PaymentIntent.cancel.return_value = MagicMock()
+            stripe_mock.error.StripeError = Exception
 
             response = client.patch(
                 f"/api/requests/{sample_request['id']}",
                 json={"status": "rejected"}
             )
 
-            # Verify refund was attempted
-            stripe_mock.Refund.create.assert_called_once_with(
-                payment_intent=sample_request["stripe_payment_id"],
-                reason="requested_by_customer"
+            # Verify cancel was attempted instead of refund
+            stripe_mock.PaymentIntent.cancel.assert_called_once_with(
+                sample_request["stripe_payment_id"]
             )
 
         assert response.status_code == 200
@@ -157,7 +160,7 @@ class TestUpdateRequest:
     def test_update_request_reject_without_payment_id(
         self, client, mock_supabase, sample_request
     ):
-        """Test rejecting a request without stripe_payment_id doesn't attempt refund."""
+        """Test rejecting a request without stripe_payment_id doesn't attempt cancel."""
         # Remove payment ID
         sample_request["stripe_payment_id"] = None
         current_chain = mock_supabase._create_chainable(sample_request)
@@ -182,8 +185,8 @@ class TestUpdateRequest:
                 json={"status": "rejected"}
             )
 
-            # Verify refund was NOT attempted
-            stripe_mock.Refund.create.assert_not_called()
+            # Verify cancel was NOT attempted
+            stripe_mock.PaymentIntent.cancel.assert_not_called()
 
         assert response.status_code == 200
 
