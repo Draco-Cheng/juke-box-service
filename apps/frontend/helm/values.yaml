@@ -13,6 +13,6 @@ resources:
 
 # Runtime env vars - injected into env-config.js at container startup
 env:
-  VITE_API_URL: "/api"
   VITE_SUPABASE_URL: ""
   VITE_SUPABASE_ANON_KEY: ""
+  VITE_STRIPE_PUBLISHABLE_KEY: ""
