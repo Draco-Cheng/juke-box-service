@@ -1,11 +1,13 @@
+'use client'
+
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { CheckCircle2, XCircle, DollarSign, Music } from 'lucide-react'
 import { api, Request as SongRequest } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function DJHistoryPage() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const { dj, loading: authLoading } = useAuth()
   const [requests, setRequests] = useState<SongRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -13,9 +15,9 @@ export default function DJHistoryPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !dj) {
-      navigate('/dj')
+      router.push('/dj')
     }
-  }, [authLoading, dj, navigate])
+  }, [authLoading, dj, router])
 
   const fetchHistory = useCallback(async () => {
     if (!dj) {

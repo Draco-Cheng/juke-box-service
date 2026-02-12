@@ -1,5 +1,7 @@
+'use client'
+
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
 import { Check, X, Play, Disc3, DollarSign, Clock, Zap, ArrowLeft, Settings, LogOut, User, QrCode, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -22,7 +24,7 @@ interface ConnectStatus {
 }
 
 export default function DJDashboardPage() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const { dj, loading: authLoading, signOut } = useAuth()
   const [venues, setVenues] = useState<Venue[]>([])
   const [activeSession, setActiveSession] = useState<SessionWithVenue | null>(null)
@@ -60,9 +62,9 @@ export default function DJDashboardPage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !dj) {
-      navigate('/dj')
+      router.push('/dj')
     }
-  }, [authLoading, dj, navigate])
+  }, [authLoading, dj, router])
 
   // Fetch Connect status
   const fetchConnectStatus = useCallback(async () => {
@@ -149,7 +151,7 @@ export default function DJDashboardPage() {
 
   const handleLogout = async () => {
     await signOut()
-    navigate('/dj')
+    router.push('/dj')
   }
 
   // Venue management handlers
@@ -338,7 +340,7 @@ export default function DJDashboardPage() {
         <header className="flex items-center justify-between pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => router.push('/')}
               className="flex items-center justify-center rounded-lg p-1 text-muted-foreground hover:text-foreground transition-colors"
               type="button"
             >

@@ -1,4 +1,6 @@
-import { useParams, useNavigate } from 'react-router-dom'
+'use client'
+
+import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
@@ -113,8 +115,9 @@ function PaymentForm({
 
 // --- Main JoinPage ---
 export default function JoinPage() {
-  const { venueSlug } = useParams()
-  const navigate = useNavigate()
+  const params = useParams()
+  const venueSlug = params?.venueSlug as string | undefined
+  const router = useRouter()
   const [venue, setVenue] = useState<Venue | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -246,7 +249,7 @@ export default function JoinPage() {
       }
     }
     // Navigate to requests tab
-    navigate('/?tab=requests')
+    router.push('/?tab=requests')
   }
 
   const handlePaymentCancel = () => {
@@ -258,7 +261,7 @@ export default function JoinPage() {
   const handleBack = () => {
     if (step === 'offer') setStep('search')
     else if (step === 'payment') handlePaymentCancel()
-    else navigate(`/venue/${venueSlug}`)
+    else router.push(`/venue/${venueSlug}`)
   }
 
   if (loading) {
@@ -274,7 +277,7 @@ export default function JoinPage() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
         <p className="text-destructive">{error || 'Venue not found'}</p>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => router.push('/')}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           type="button"
         >
@@ -289,7 +292,7 @@ export default function JoinPage() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
         <p className="text-muted-foreground">No active session at this venue.</p>
         <button
-          onClick={() => navigate(`/venue/${venueSlug}`)}
+          onClick={() => router.push(`/venue/${venueSlug}`)}
           className="text-sm text-primary hover:text-primary/80 transition-colors"
           type="button"
         >

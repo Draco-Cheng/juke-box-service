@@ -1,4 +1,6 @@
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+'use client'
+
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Search, ListMusic, Headphones, LayoutDashboard, Radio, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -11,16 +13,25 @@ interface NavTab {
   onClick: () => void
 }
 
+/** Pages where the bottom nav should be hidden */
+const HIDE_NAV_ROUTES = ['/register', '/login', '/join', '/venue']
+
 export function BottomNav() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const pathname = usePathname() ?? '/'
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  const isDJRoute = location.pathname.startsWith('/dj')
+  // Hide nav on certain routes
+  const shouldHide = HIDE_NAV_ROUTES.some(
+    (r) => pathname === r || pathname.startsWith(r + '/'),
+  )
+  if (shouldHide) return null
 
-  // Listener nav — shown on /, /join/:slug
+  const isDJRoute = pathname.startsWith('/dj')
+
+  // Listener nav — shown on /
   if (!isDJRoute) {
-    const currentTab = searchParams.get('tab') || 'djs'
+    const currentTab = searchParams?.get('tab') || 'djs'
 
     const tabs: NavTab[] = [
       {
@@ -28,14 +39,14 @@ export function BottomNav() {
         label: 'DJs',
         icon: Search,
         paths: ['/'],
-        onClick: () => navigate('/?tab=djs'),
+        onClick: () => router.push('/?tab=djs'),
       },
       {
         id: 'requests',
         label: 'Requests',
         icon: ListMusic,
         paths: ['/'],
-        onClick: () => navigate('/?tab=requests'),
+        onClick: () => router.push('/?tab=requests'),
       },
     ]
 
@@ -44,7 +55,7 @@ export function BottomNav() {
         <div className="mx-auto flex max-w-md items-center">
           {tabs.map((tab) => {
             const isActive =
-              tab.paths.includes(location.pathname) && currentTab === tab.id
+              tab.paths.includes(pathname) && currentTab === tab.id
             return (
               <button
                 key={tab.id}
@@ -61,7 +72,7 @@ export function BottomNav() {
             )
           })}
           <button
-            onClick={() => navigate('/dj')}
+            onClick={() => router.push('/dj')}
             className="flex flex-1 flex-col items-center gap-1 py-3 text-muted-foreground transition-colors hover:text-foreground"
             type="button"
           >
@@ -80,21 +91,21 @@ export function BottomNav() {
       label: 'Dashboard',
       icon: LayoutDashboard,
       paths: ['/dj/dashboard'],
-      onClick: () => navigate('/dj/dashboard'),
+      onClick: () => router.push('/dj/dashboard'),
     },
     {
       id: 'go-live',
       label: 'Go Live',
       icon: Radio,
       paths: ['/dj/go-live'],
-      onClick: () => navigate('/dj/go-live'),
+      onClick: () => router.push('/dj/go-live'),
     },
     {
       id: 'history',
       label: 'History',
       icon: History,
       paths: ['/dj/history'],
-      onClick: () => navigate('/dj/history'),
+      onClick: () => router.push('/dj/history'),
     },
   ]
 
@@ -102,7 +113,7 @@ export function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md">
       <div className="mx-auto flex max-w-md items-center">
         {djTabs.map((tab) => {
-          const isActive = tab.paths.includes(location.pathname)
+          const isActive = tab.paths.includes(pathname)
           return (
             <button
               key={tab.id}
@@ -119,7 +130,7 @@ export function BottomNav() {
           )
         })}
         <button
-          onClick={() => navigate('/')}
+          onClick={() => router.push('/')}
           className="flex flex-1 flex-col items-center gap-1 py-3 text-muted-foreground transition-colors hover:text-foreground"
           type="button"
         >

@@ -1,12 +1,14 @@
+'use client'
+
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { Radio, Zap } from 'lucide-react'
 import { Slider } from '@/components/ui/slider'
 import { api, Venue, SessionWithVenue, DEFAULT_PRICING } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function DJGoLivePage() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const { dj, loading: authLoading } = useAuth()
   const [venues, setVenues] = useState<Venue[]>([])
   const [activeSession, setActiveSession] = useState<SessionWithVenue | null>(null)
@@ -20,9 +22,9 @@ export default function DJGoLivePage() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !dj) {
-      navigate('/dj')
+      router.push('/dj')
     }
-  }, [authLoading, dj, navigate])
+  }, [authLoading, dj, router])
 
   // Fetch DJ data
   const fetchData = useCallback(async () => {
@@ -150,7 +152,7 @@ export default function DJGoLivePage() {
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-muted-foreground">No venues yet.</p>
                 <button
-                  onClick={() => navigate('/dj/dashboard')}
+                  onClick={() => router.push('/dj/dashboard')}
                   className="text-sm text-primary hover:underline"
                   type="button"
                 >

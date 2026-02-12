@@ -1,11 +1,14 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Star, Users, MapPin, Radio, Shield } from 'lucide-react'
 import { api, Venue, Session, LiveDJ } from '../lib/api'
 
 export default function DJDetailPage() {
-  const { venueSlug } = useParams()
-  const navigate = useNavigate()
+  const params = useParams()
+  const venueSlug = params?.venueSlug as string | undefined
+  const router = useRouter()
   const [venue, setVenue] = useState<Venue | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [liveDJ, setLiveDJ] = useState<LiveDJ | null>(null)
@@ -54,7 +57,7 @@ export default function DJDetailPage() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
         <p className="text-destructive">{error || 'Venue not found'}</p>
         <button
-          onClick={() => navigate('/')}
+          onClick={() => router.push('/')}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           type="button"
         >
@@ -76,7 +79,7 @@ export default function DJDetailPage() {
       <div className="mx-auto max-w-md px-4 pb-8">
         {/* Back button */}
         <button
-          onClick={() => navigate('/')}
+          onClick={() => router.push('/')}
           className="flex items-center gap-2 pt-6 text-sm text-muted-foreground hover:text-foreground transition-colors"
           type="button"
         >
@@ -173,7 +176,7 @@ export default function DJDetailPage() {
           {/* CTA */}
           {session ? (
             <button
-              onClick={() => navigate(`/join/${venueSlug}`)}
+              onClick={() => router.push(`/join/${venueSlug}`)}
               className="h-14 rounded-xl bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 transition-colors"
               type="button"
             >

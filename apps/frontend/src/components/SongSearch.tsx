@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Search, Disc3, Check, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'

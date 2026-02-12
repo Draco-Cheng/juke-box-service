@@ -1,5 +1,7 @@
+'use client'
+
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Radio, Star, Users, Disc3, Clock, CheckCircle2, XCircle, Ban, ChevronDown, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api, LiveDJ, Request as SongRequest } from '../lib/api'
@@ -316,9 +318,9 @@ function RequestCard({
 }
 
 export default function HomePage() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const activeTab = (searchParams.get('tab') || 'djs') as 'djs' | 'requests'
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const activeTab = (searchParams?.get('tab') || 'djs') as 'djs' | 'requests'
   const [liveDJs, setLiveDJs] = useState<LiveDJ[]>([])
   const [loading, setLoading] = useState(true)
   const [myRequests, setMyRequests] = useState<SongRequest[]>([])
@@ -361,7 +363,7 @@ export default function HomePage() {
       setRequestsLoading(false)
 
       // Auto-expand the first (newest) request if navigated from payment success
-      if (results.length > 0 && searchParams.get('tab') === 'requests') {
+      if (results.length > 0 && searchParams?.get('tab') === 'requests') {
         setExpandedRequestId((prev) => prev ?? results[0].id)
       }
     }
@@ -384,7 +386,7 @@ export default function HomePage() {
   }
 
   function handleDJClick(liveDJ: LiveDJ) {
-    navigate(`/venue/${liveDJ.venue.slug}`)
+    router.push(`/venue/${liveDJ.venue.slug}`)
   }
 
   return (
@@ -468,7 +470,7 @@ export default function HomePage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => navigate('/?tab=djs')}
+                  onClick={() => router.push('/?tab=djs')}
                   className="mt-2 rounded-lg bg-primary px-6 py-2 text-sm font-medium text-primary-foreground"
                   type="button"
                 >

@@ -1,3 +1,5 @@
+'use client'
+
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 
 export function OfflineBanner() {
