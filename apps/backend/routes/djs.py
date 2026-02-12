@@ -252,6 +252,54 @@ async def create_dj_venue(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/{dj_id}/requests", response_model=List[dict])
+async def get_dj_requests(
+    dj_id: str, user: AuthenticatedUser = Depends(require_auth)
+):
+    """Get all requests across all sessions for a DJ (history)"""
+    try:
+        supabase = get_supabase()
+
+        # Verify the DJ belongs to this user
+        dj_check = (
+            supabase.table("djs")
+            .select("email")
+            .eq("id", dj_id)
+            .single()
+            .execute()
+        )
+        if not dj_check.data or dj_check.data.get("email") != user.email:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Get all session IDs for this DJ
+        sessions = (
+            supabase.table("sessions")
+            .select("id")
+            .eq("dj_id", dj_id)
+            .execute()
+        )
+        session_ids = [s["id"] for s in sessions.data]
+
+        if not session_ids:
+            return []
+
+        # Get all requests for these sessions, newest first
+        result = (
+            supabase.table("requests")
+            .select("*")
+            .in_("session_id", session_ids)
+            .in_("status", ["played", "rejected", "expired"])
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        return result.data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.patch("/{dj_id}/profile", response_model=DJ)
 async def update_dj_profile(
     dj_id: str,

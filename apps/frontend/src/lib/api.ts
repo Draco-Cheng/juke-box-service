@@ -225,6 +225,7 @@ export const api = {
   getDJ: (djId: string) => request<DJ>(`/djs/${djId}`),
   getDJVenues: (djId: string) => request<Venue[]>(`/djs/${djId}/venues`),
   getDJActiveSession: (djId: string) => request<SessionWithVenue | null>(`/djs/${djId}/active-session`),
+  getDJRequests: (djId: string) => request<Request[]>(`/djs/${djId}/requests`),
   createDJVenue: (djId: string, venue: VenueCreate) =>
     request<Venue>(`/djs/${djId}/venues`, {
       method: 'POST',

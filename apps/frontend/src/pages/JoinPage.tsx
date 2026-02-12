@@ -1,10 +1,11 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState, useCallback } from 'react'
 import { loadStripe, Stripe } from '@stripe/stripe-js'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { api, Venue, Session, Request, SpotifyTrack, VenuePricing, DEFAULT_PRICING } from '../lib/api'
+import { ArrowLeft, Disc3, Shield } from 'lucide-react'
+import { Slider } from '@/components/ui/slider'
+import { api, Venue, Session, SpotifyTrack, VenuePricing, DEFAULT_PRICING } from '../lib/api'
 import SongSearch from '../components/SongSearch'
-import { useMyRequestStatus } from '../hooks/useMyRequestStatus'
 
 // LocalStorage key for storing customer's request IDs
 const MY_REQUESTS_KEY = 'my_requests'
@@ -21,24 +22,21 @@ function getMyRequestIds(): string[] {
 function addMyRequestId(requestId: string) {
   const ids = getMyRequestIds()
   if (!ids.includes(requestId)) {
-    // Keep only the last 10 requests
     const newIds = [requestId, ...ids].slice(0, 10)
     localStorage.setItem(MY_REQUESTS_KEY, JSON.stringify(newIds))
   }
 }
 
-// Helper to get pricing from venue with fallback to defaults
 function getVenuePricing(venue: Venue | null): VenuePricing {
-  if (!venue?.settings?.pricing) {
-    return DEFAULT_PRICING
-  }
-  return {
-    ...DEFAULT_PRICING,
-    ...venue.settings.pricing
-  }
+  if (!venue?.settings?.pricing) return DEFAULT_PRICING
+  return { ...DEFAULT_PRICING, ...venue.settings.pricing }
 }
 
-// Payment Form Component
+const QUICK_AMOUNTS = [5, 10, 15, 20, 30, 50]
+
+type Step = 'search' | 'offer' | 'payment'
+
+// --- Payment Form ---
 function PaymentForm({
   onSuccess,
   onCancel,
@@ -69,9 +67,7 @@ function PaymentForm({
 
     const { error: confirmError } = await stripe.confirmPayment({
       elements,
-      confirmParams: {
-        return_url: window.location.href,
-      },
+      confirmParams: { return_url: window.location.href },
       redirect: 'if_required',
     })
 
@@ -81,7 +77,6 @@ function PaymentForm({
       return
     }
 
-    // Payment successful, confirm on backend
     try {
       await api.confirmPayment(paymentIntentId)
       onSuccess()
@@ -92,14 +87,14 @@ function PaymentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <PaymentElement />
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-3 bg-gray-700 text-gray-300 rounded-lg font-medium hover:bg-gray-600 transition"
+          className="flex-1 h-12 rounded-xl bg-secondary text-foreground font-medium hover:bg-secondary/80 transition-colors"
           disabled={processing}
         >
           Cancel
@@ -107,7 +102,7 @@ function PaymentForm({
         <button
           type="submit"
           disabled={!stripe || processing}
-          className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 transition"
+          className="flex-1 h-12 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
           {processing ? 'Processing...' : 'Authorize Payment'}
         </button>
@@ -116,54 +111,76 @@ function PaymentForm({
   )
 }
 
+// --- Main JoinPage ---
 export default function JoinPage() {
   const { venueSlug } = useParams()
+  const navigate = useNavigate()
   const [venue, setVenue] = useState<Venue | null>(null)
   const [session, setSession] = useState<Session | null>(null)
-  const [requests, setRequests] = useState<Request[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Stripe
-  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
-  const [showPayment, setShowPayment] = useState(false)
+  // Step state
+  const [step, setStep] = useState<Step>('search')
 
-  // Form state
+  // Song state
   const [songTitle, setSongTitle] = useState('')
   const [songArtist, setSongArtist] = useState('')
   const [spotifyTrackId, setSpotifyTrackId] = useState<string | null>(null)
   const [songExplicit, setSongExplicit] = useState(false)
-  const [tier, setTier] = useState<'normal' | 'priority' | 'asap'>('normal')
   const [message, setMessage] = useState('')
+
+  // Offer state
+  const [offerAmount, setOfferAmount] = useState(5)
+
+  // Payment state
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null)
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // My request tracking - track the most recent request from this customer
-  const [myRequestId, setMyRequestId] = useState<string | null>(() => {
-    const ids = getMyRequestIds()
-    return ids.length > 0 ? ids[0] : null
-  })
+  const currency = venue?.settings?.pricing?.currency === 'EUR'
+    ? '€'
+    : venue?.settings?.pricing?.currency || '€'
+  const minPrice = venue ? getVenuePricing(venue).normal : 200
+  const minPriceEur = minPrice / 100
 
-  // Realtime tracking of my request status
-  const { request: myRequest } = useMyRequestStatus({
-    requestId: myRequestId,
-    onStatusChange: (updatedRequest) => {
-      // Optionally show notification when status changes
-      if (updatedRequest.status === 'accepted') {
-        console.log('Your request was accepted!')
-      } else if (updatedRequest.status === 'played') {
-        console.log('Your song is playing!')
-      } else if (updatedRequest.status === 'rejected') {
-        console.log('Your request was skipped. Authorization released.')
-      } else if (updatedRequest.status === 'expired') {
-        console.log('Your request expired. Authorization released.')
+  // Load Stripe
+  useEffect(() => {
+    async function initStripe() {
+      const config = await api.getStripeConfig()
+      setStripePromise(loadStripe(config.publishable_key))
+    }
+    initStripe()
+  }, [])
+
+  // Load venue + session
+  useEffect(() => {
+    if (!venueSlug) return
+
+    async function loadData() {
+      try {
+        setLoading(true)
+        const [venueData, sessionData] = await Promise.all([
+          api.getVenue(venueSlug!),
+          api.getActiveSession(venueSlug!),
+        ])
+        setVenue(venueData)
+        setSession(sessionData)
+
+        // Set initial offer to DJ's min price
+        const pricing = getVenuePricing(venueData)
+        setOfferAmount(pricing.normal / 100)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load')
+      } finally {
+        setLoading(false)
       }
-    },
-  })
+    }
+    loadData()
+  }, [venueSlug])
 
-  // Handle song selection from SongSearch
   const handleSongSelect = useCallback((track: SpotifyTrack | null, manualTitle?: string, manualArtist?: string) => {
     setSubmitError(null)
     if (track) {
@@ -184,330 +201,282 @@ export default function JoinPage() {
     }
   }, [])
 
-  // Load Stripe
-  useEffect(() => {
-    async function initStripe() {
-      const config = await api.getStripeConfig()
-      setStripePromise(loadStripe(config.publishable_key))
+  const handleContinueToOffer = () => {
+    if (songTitle.trim()) {
+      setStep('offer')
     }
-    initStripe()
-  }, [])
+  }
 
-  useEffect(() => {
-    if (!venueSlug) return
-
-    async function loadData() {
-      if (!venueSlug) return
-      try {
-        setLoading(true)
-        const venueData = await api.getVenue(venueSlug)
-        setVenue(venueData)
-
-        const sessionData = await api.getActiveSession(venueSlug)
-        setSession(sessionData)
-
-        if (sessionData) {
-          const requestsData = await api.getSessionRequests(sessionData.id)
-          setRequests(requestsData)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [venueSlug])
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!session || !songTitle.trim()) return
+  const handleSubmitOffer = async () => {
+    if (!session) return
 
     setSubmitting(true)
     setSubmitError(null)
     try {
-      // Create PaymentIntent
       const { client_secret, payment_intent_id } = await api.createPaymentIntent({
         session_id: session.id,
         song_title: songTitle.trim(),
         song_artist: songArtist.trim() || undefined,
         spotify_track_id: spotifyTrackId || undefined,
         explicit: songExplicit,
-        tier,
         message: message.trim() || undefined,
-        amount: getVenuePricing(venue)[tier],
+        tier: 'normal',
+        amount: offerAmount * 100,
       })
 
       setClientSecret(client_secret)
       setPaymentIntentId(payment_intent_id)
-      setShowPayment(true)
+      setStep('payment')
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create payment'
-      setSubmitError(errorMessage)
+      setSubmitError(err instanceof Error ? err.message : 'Failed to create payment')
     } finally {
       setSubmitting(false)
     }
   }
 
-  async function handlePaymentSuccess() {
-    // Get the request that was just created
+  const handlePaymentSuccess = async () => {
     if (paymentIntentId) {
       try {
         const result = await api.confirmPayment(paymentIntentId)
         if (result.request?.id) {
           addMyRequestId(result.request.id)
-          setMyRequestId(result.request.id)
         }
       } catch {
-        // Already confirmed, try to get from requests list
+        // Already confirmed
       }
     }
-
-    setShowPayment(false)
-    setClientSecret(null)
-    setPaymentIntentId(null)
-    setSongTitle('')
-    setSongArtist('')
-    setSpotifyTrackId(null)
-    setMessage('')
-    setTier('normal')
-
-    // Refresh requests
-    if (session) {
-      api.getSessionRequests(session.id).then(setRequests)
-    }
+    // Navigate to requests tab
+    navigate('/?tab=requests')
   }
 
-  function handlePaymentCancel() {
-    setShowPayment(false)
+  const handlePaymentCancel = () => {
+    setStep('offer')
     setClientSecret(null)
     setPaymentIntentId(null)
+  }
+
+  const handleBack = () => {
+    if (step === 'offer') setStep('search')
+    else if (step === 'payment') handlePaymentCancel()
+    else navigate(`/venue/${venueSlug}`)
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <p className="text-gray-400">Loading...</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   if (error || !venue) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <p className="text-red-400">{error || 'Venue not found'}</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-destructive">{error || 'Venue not found'}</p>
+        <button
+          onClick={() => navigate('/')}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          type="button"
+        >
+          Back to DJs
+        </button>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-muted-foreground">No active session at this venue.</p>
+        <button
+          onClick={() => navigate(`/venue/${venueSlug}`)}
+          className="text-sm text-primary hover:text-primary/80 transition-colors"
+          type="button"
+        >
+          Go back
+        </button>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-1">{venue.name}</h1>
-        <p className="text-gray-400 text-sm mb-6">
-          {session ? 'Session active' : 'No active session'}
-        </p>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-md px-4 pb-8">
+        {/* Back + Header */}
+        <div className="flex items-center gap-3 pt-6">
+          <button
+            onClick={handleBack}
+            className="flex items-center justify-center rounded-lg p-1 text-muted-foreground hover:text-foreground transition-colors"
+            type="button"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-lg font-bold text-foreground">
+            {step === 'search' && 'Choose a Song'}
+            {step === 'offer' && 'Make Your Offer'}
+            {step === 'payment' && 'Authorize Payment'}
+          </h1>
+        </div>
 
-        {session ? (
-          <>
-            {/* Payment Form */}
-            {showPayment && clientSecret && stripePromise && paymentIntentId ? (
-              <div className="bg-gray-800 rounded-lg p-4 shadow-sm mb-4 border border-gray-700">
-                <h2 className="font-semibold mb-3">Authorize Payment</h2>
-                <p className="text-gray-400 text-sm mb-2">
-                  {songTitle} {songArtist && `- ${songArtist}`}
-                </p>
-                <p className="text-gray-500 text-xs mb-4">
-                  Your card will be authorized now. You'll only be charged if the DJ plays your song.
-                </p>
-                <Elements
-                  stripe={stripePromise}
-                  options={{
-                    clientSecret,
-                    appearance: { theme: 'night' },
-                  }}
-                >
-                  <PaymentForm
-                    onSuccess={handlePaymentSuccess}
-                    onCancel={handlePaymentCancel}
-                    paymentIntentId={paymentIntentId}
-                  />
-                </Elements>
-              </div>
-            ) : (
-              <>
-              {/* My Request Status */}
-              {myRequest && (
-                <div className={`rounded-lg p-4 shadow-sm mb-4 ${
-                  myRequest.status === 'played'
-                    ? 'bg-green-900/50 border border-green-700'
-                    : myRequest.status === 'rejected'
-                      ? 'bg-red-900/50 border border-red-700'
-                      : myRequest.status === 'expired'
-                        ? 'bg-gray-800 border border-gray-600'
-                        : myRequest.status === 'accepted'
-                          ? 'bg-blue-900/50 border border-blue-700'
-                          : 'bg-yellow-900/50 border border-yellow-700'
-                }`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="font-semibold">Your Request</h2>
-                    <span className={`text-xs px-2 py-1 rounded font-medium ${
-                      myRequest.status === 'played'
-                        ? 'bg-green-800 text-green-200'
-                        : myRequest.status === 'rejected'
-                          ? 'bg-red-800 text-red-200'
-                          : myRequest.status === 'expired'
-                            ? 'bg-gray-700 text-gray-300'
-                            : myRequest.status === 'accepted'
-                              ? 'bg-blue-800 text-blue-200'
-                              : 'bg-yellow-800 text-yellow-200'
-                    }`}>
-                      {myRequest.status === 'pending' && 'Waiting for DJ'}
-                      {myRequest.status === 'accepted' && 'Coming up!'}
-                      {myRequest.status === 'played' && 'Played & Charged'}
-                      {myRequest.status === 'rejected' && 'Skipped'}
-                      {myRequest.status === 'expired' && 'Expired'}
-                    </span>
-                  </div>
-                  <p className="font-medium">{myRequest.song_title}</p>
-                  {myRequest.song_artist && (
-                    <p className="text-sm text-gray-400">{myRequest.song_artist}</p>
-                  )}
-                  {myRequest.status === 'rejected' && (
-                    <p className="text-sm text-red-400 mt-2">
-                      The payment hold has been released. You were not charged.
-                    </p>
-                  )}
-                  {myRequest.status === 'expired' && (
-                    <p className="text-sm text-gray-400 mt-2">
-                      The authorization expired. You were not charged.
-                    </p>
-                  )}
-                  {myRequest.status === 'pending' && (
-                    <p className="text-sm text-yellow-400/70 mt-2">
-                      Your card has been authorized. You'll only be charged if the DJ plays your song.
-                    </p>
-                  )}
-                </div>
-              )}
+        <div className="flex flex-col gap-6 pt-6">
+          {/* STEP 1: Song Search */}
+          {step === 'search' && (
+            <>
+              <SongSearch onSelect={handleSongSelect} disabled={false} />
 
-              {/* Request Form */}
-              <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg p-4 shadow-sm mb-4 border border-gray-700">
-                <h2 className="font-semibold mb-3">Request a Song</h2>
-
-                <div className="mb-3">
-                  <SongSearch onSelect={handleSongSelect} disabled={submitting} />
-                </div>
-
-                {/* Tier Selection */}
-                <div className="flex gap-2 mb-3">
-                  {(['normal', 'priority', 'asap'] as const).map((t) => {
-                    const pricing = getVenuePricing(venue)
-                    const price = pricing[t]
-                    const currency = pricing.currency === 'EUR' ? '€' : pricing.currency
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setTier(t)}
-                        className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                          tier === t
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        }`}
-                      >
-                        {t === 'normal' && `Normal ${currency}${(price / 100).toFixed(0)}`}
-                        {t === 'priority' && `Priority ${currency}${(price / 100).toFixed(0)}`}
-                        {t === 'asap' && `ASAP ${currency}${(price / 100).toFixed(0)}`}
-                      </button>
-                    )
-                  })}
-                </div>
-
+              {/* Message field */}
+              {songTitle && (
                 <textarea
                   placeholder="Message to DJ (optional)"
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg mb-3 focus:outline-none focus:border-purple-500 resize-none text-white placeholder:text-gray-400"
+                  className="w-full rounded-xl bg-card border border-border px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={2}
                 />
+              )}
 
-                {submitError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3">
-                    <p className="text-red-700 text-sm">{submitError}</p>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitting || !songTitle.trim()}
-                  className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium disabled:opacity-50 transition"
-                >
-                  {submitting ? 'Loading...' : `Authorize €${(getVenuePricing(venue)[tier] / 100).toFixed(0)} & Submit`}
-                </button>
-              </form>
-              </>
-            )}
-
-            {/* Request Queue */}
-            <div className="bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-700">
-              <h2 className="font-semibold mb-3">Queue ({requests.length})</h2>
-              {requests.length === 0 ? (
-                <p className="text-gray-400 text-center py-4">No requests yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {requests.map((req) => (
-                    <div
-                      key={req.id}
-                      className="flex items-center justify-between p-3 bg-gray-700 rounded-lg"
+              {/* Continue button */}
+              {songTitle && (
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border">
+                  <div className="mx-auto max-w-md">
+                    <button
+                      onClick={handleContinueToOffer}
+                      className="flex h-14 w-full items-center justify-center rounded-xl bg-primary font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                      type="button"
                     >
-                      <div>
-                        <p className="font-medium">{req.song_title}</p>
-                        {req.song_artist && (
-                          <p className="text-sm text-gray-400">{req.song_artist}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`text-xs px-2 py-1 rounded ${
-                            req.tier === 'asap'
-                              ? 'bg-red-900 text-red-300'
-                              : req.tier === 'priority'
-                                ? 'bg-yellow-900 text-yellow-300'
-                                : 'bg-gray-600 text-gray-300'
-                          }`}
-                        >
-                          {req.tier}
-                        </span>
-                        <span
-                          className={`text-xs px-2 py-1 rounded ${
-                            req.status === 'played'
-                              ? 'bg-green-900 text-green-300'
-                              : req.status === 'accepted'
-                                ? 'bg-blue-900 text-blue-300'
-                                : req.status === 'rejected'
-                                  ? 'bg-red-900 text-red-300'
-                                  : req.status === 'expired'
-                                    ? 'bg-gray-700 text-gray-400'
-                                    : 'bg-gray-600 text-gray-300'
-                          }`}
-                        >
-                          {req.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                      Continue to Offer
+                    </button>
+                  </div>
                 </div>
               )}
-            </div>
-          </>
-        ) : (
-          <div className="bg-gray-800 rounded-lg p-8 shadow-sm text-center border border-gray-700">
-            <p className="text-gray-400">No active DJ session at this venue.</p>
-            <p className="text-gray-500 text-sm mt-2">Check back later!</p>
-          </div>
-        )}
+            </>
+          )}
+
+          {/* STEP 2: Offer Screen */}
+          {step === 'offer' && (
+            <>
+              {/* Selected song summary */}
+              <div className="flex items-center gap-3 rounded-xl bg-card p-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                  <Disc3 className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="font-medium text-foreground truncate">{songTitle}</span>
+                  {songArtist && (
+                    <span className="text-sm text-muted-foreground truncate">{songArtist}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Amount display */}
+              <div className="flex flex-col items-center gap-2 py-4">
+                <span className="text-sm text-muted-foreground">Your offer</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="font-mono text-5xl font-bold text-foreground">
+                    {currency}{offerAmount}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Minimum: {currency}{minPriceEur}
+                </span>
+              </div>
+
+              {/* Quick amounts */}
+              <div className="grid grid-cols-3 gap-2">
+                {QUICK_AMOUNTS.filter((a) => a >= minPriceEur).map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => setOfferAmount(amount)}
+                    className={`flex h-12 items-center justify-center rounded-lg font-mono font-bold transition-colors ${
+                      offerAmount === amount
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card text-foreground hover:bg-secondary'
+                    }`}
+                    type="button"
+                  >
+                    {currency}{amount}
+                  </button>
+                ))}
+              </div>
+
+              {/* Slider */}
+              <div className="flex flex-col gap-3 px-1">
+                <Slider
+                  value={[offerAmount]}
+                  onValueChange={(val: number[]) => setOfferAmount(val[0])}
+                  min={minPriceEur}
+                  max={100}
+                  step={1}
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{currency}{minPriceEur}</span>
+                  <span>{currency}100</span>
+                </div>
+              </div>
+
+              {/* Trust signal */}
+              <div className="flex items-center gap-2 rounded-lg bg-primary/10 p-3">
+                <Shield className="h-4 w-4 text-primary" />
+                <span className="text-xs text-primary">
+                  You are only charged if your song is played
+                </span>
+              </div>
+
+              {submitError && (
+                <p className="text-sm text-destructive text-center">{submitError}</p>
+              )}
+
+              {/* Submit CTA */}
+              <button
+                onClick={handleSubmitOffer}
+                disabled={submitting}
+                className="flex h-14 w-full items-center justify-center rounded-xl bg-primary font-semibold text-primary-foreground text-base transition-colors hover:bg-primary/90 disabled:opacity-50"
+                type="button"
+              >
+                {submitting ? 'Loading...' : `Send Request — ${currency}${offerAmount}`}
+              </button>
+            </>
+          )}
+
+          {/* STEP 3: Payment */}
+          {step === 'payment' && clientSecret && stripePromise && paymentIntentId && (
+            <>
+              {/* Song summary */}
+              <div className="flex items-center gap-3 rounded-xl bg-card p-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                  <Disc3 className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="font-medium text-foreground truncate">{songTitle}</span>
+                  {songArtist && (
+                    <span className="text-sm text-muted-foreground truncate">{songArtist}</span>
+                  )}
+                </div>
+                <span className="font-mono font-bold text-primary shrink-0">
+                  {currency}{offerAmount}
+                </span>
+              </div>
+
+              <p className="text-xs text-muted-foreground text-center">
+                Your card will be authorized now. You'll only be charged if the DJ plays your song.
+              </p>
+
+              <Elements
+                stripe={stripePromise}
+                options={{
+                  clientSecret,
+                  appearance: { theme: 'night' },
+                }}
+              >
+                <PaymentForm
+                  onSuccess={handlePaymentSuccess}
+                  onCancel={handlePaymentCancel}
+                  paymentIntentId={paymentIntentId}
+                />
+              </Elements>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

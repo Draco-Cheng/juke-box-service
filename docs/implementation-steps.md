@@ -347,6 +347,115 @@ This document outlines the step-by-step implementation plan for building the Dro
 
 ---
 
+## Phase 9: UI Redesign v2 — Full Design System Migration ✅
+**Status: COMPLETE**
+
+Reference: `docs/jukebox-app-design/` (Next.js prototype, UI components only)
+
+> **Framework decision**: Keep React + Vite. The design prototype uses Next.js 16 but only for
+> prototyping — all component logic is pure React and portable. Switching to Next.js would require
+> rebuilding the monorepo setup, Docker/Nginx config, PWA plugin, and routing — high cost, low benefit
+> since this is a SPA with no SSR needs.
+
+### 9.1 Foundation — shadcn/ui + Design Tokens ✅
+- [x] Install and configure shadcn/ui for Vite (not Next.js)
+- [x] Migrate CSS variables from Purple to Teal/Cyan primary (#51c2d8, HSL 160 84% 39%)
+  - Primary: `160 84% 39%`
+  - Secondary: `230 8% 14%`
+  - Accent: `38 100% 56%` (orange/yellow)
+  - Destructive: `0 72% 51%`
+- [x] Add custom animations to global CSS
+  - `pulse-live` (live indicator pulse)
+  - `slide-up` (page transitions)
+  - `progress-pulse` (status breathing)
+- [x] Import shadcn/ui components needed: Button, Input, Slider (Radix-based)
+  - Using `cn()` from `@/lib/utils` for class merging throughout
+
+### 9.2 Navigation — Bottom Nav Bar ✅
+- [x] Create `BottomNav` component (fixed bottom, backdrop blur)
+- [x] Listener mode tabs: DJs, Requests
+- [x] DJ mode tabs: Dashboard, Go Live, History
+- [x] Role toggle button (switch between Listener/DJ)
+- [x] Remove existing tab-based navigation from HomePage
+
+### 9.3 DJ Discovery — HomePage Redesign ✅
+- [x] Hero header with DropBeat branding
+- [x] "Live Now" section with animated `pulse-live` indicator
+- [x] DJ cards: avatar, name, genre badges, min price, rating, listener count, venue
+- [x] Click DJ card → navigate to DJ Detail (`/venue/:venueSlug`)
+
+### 9.4 DJ Detail Page (New) ✅
+- [x] Create route `/venue/:venueSlug`
+- [x] Large DJ avatar with live badge
+- [x] Stats display: rating, listeners, min price
+- [x] Venue info with map icon
+- [x] Trust signal: "Only charged if song is played"
+- [x] "Request a Song" CTA button → navigates to `/join/:venueSlug`
+
+### 9.5 Song Search Redesign ✅
+- [x] Restyle with shadcn/ui Input + Card components
+- [x] Selectable song list with checkmark indicators
+- [x] "Continue to Offer" button (3-step JoinPage flow)
+
+### 9.6 Offer Screen (New — replaces fixed tiers) ✅
+- [x] Large offer amount display (Space Mono font)
+- [x] Quick amount buttons: €5, €10, €15, €20, €30, €50
+- [x] Custom slider (min = DJ's minimum price, max = €100)
+- [x] Trust signal badge
+- [x] "Send Request €XX" submit button
+- [x] Backend already supports custom amounts via `amount` field
+
+### 9.7 Request Status Redesign ✅
+- [x] Animated status icons (pending spinner, accepted check, played check, rejected/expired Ban)
+- [x] Progress bar: pending → accepted → played (displayed as "completed")
+- [x] Song details + DJ name display
+- [x] Cancel/Withdraw option with confirmation dialog
+  - Different messaging for pending ("Cancel this request?") vs accepted ("DJ already accepted. Withdraw?")
+  - Calls `api.updateRequest(id, 'rejected')` which releases Stripe hold
+- [x] Auto-expand newest request when navigating to requests tab
+
+### 9.8 My Requests Redesign ✅
+- [x] Accordion-based expandable request cards (implemented in 9.7)
+- [x] Collapsed: song name, status badge + color, amount
+- [x] Expanded: DJ info, progress tracker, cancel/withdraw button, date
+
+### 9.9 DJ Dashboard Redesign ✅
+- [x] "DJ Cockpit" header with LIVE indicator (`animate-pulse-live`)
+- [x] Total earnings display (prominent, font-mono)
+- [x] 3-column stats row: Pending (accent) / In Queue (primary) / Potential earnings
+- [x] Incoming Requests section: cards with reject/accept icon buttons
+- [x] Queue section: accepted songs with "Mark Played" + DollarSign button
+- [x] Played section: compact list with Check icon
+- [x] Empty state when offline (Zap icon, venue selector, Go Live CTA)
+- [x] Full migration from hardcoded colors to design tokens
+- [x] All lucide-react icons, removed inline SVGs
+
+### 9.10 Go Live Page (New — extracted from Dashboard) ✅
+- [x] Large animated status indicator circle (double-ring Radio icon, `animate-pulse-live` when live)
+- [x] Minimum price slider (€1–€50) using shadcn/ui Slider
+- [x] Venue selector dropdown (pre-selects if only one venue)
+- [x] GO LIVE / STOP SESSION toggle button with loading spinner
+- [x] Status messaging ("You are LIVE" / "Go Live" with contextual subtitles)
+- [x] Route: `/dj/go-live` → `DJGoLivePage.tsx`
+
+### 9.11 DJ History Page (New) ✅
+- [x] Total earnings badge (top right, primary/10 background)
+- [x] Summary cards: Songs Played count (primary), Declined count (destructive)
+- [x] Past requests list
+  - Played: CheckCircle2 icon, primary color, amount
+  - Declined: XCircle icon, destructive color, strikethrough price
+  - Expired: XCircle icon, destructive color, "Expired" label
+- [x] Empty state with Music icon
+- [x] Route: `/dj/history` → `DJHistoryPage.tsx`
+- [x] Backend: `GET /api/djs/{dj_id}/requests` — returns all terminal-status requests across sessions
+
+### Backend Changes Completed
+- [x] Custom offer amounts already supported via `amount` field in `POST /api/requests`
+- [x] DJ minimum price: venue pricing `normal` tier used as minimum
+- [x] `GET /api/djs/{dj_id}/requests` — DJ history endpoint (played/rejected/expired requests across all sessions)
+
+---
+
 ## Milestone Checklist
 
 | Milestone | Deliverable | Status |
@@ -358,8 +467,9 @@ This document outlines the step-by-step implementation plan for building the Dro
 | M4 | DJ can manage requests | ✅ Done |
 | M5 | Deployment infrastructure | ✅ Done |
 | M6 | Error handling, security, testing | ✅ Done |
-| M7 | DropBeat UI redesign + DJ discovery | ✅ Done |
-| M8 | Production deployment | ⏳ Pending |
+| M7 | DropBeat UI redesign v1 (DJ discovery) | ✅ Done |
+| M8 | UI redesign v2 (full design system) | ✅ Done |
+| M9 | Production deployment | ⏳ Pending |
 
 ---
 
@@ -375,10 +485,14 @@ This document outlines the step-by-step implementation plan for building the Dro
 8. ~~**Integrate Spotify API**~~ ✅ - Song search functionality
 9. ~~**Add Payment Webhooks**~~ ✅ - Authorization, capture, cancel events
 10. ~~**Set up deployment infrastructure**~~ ✅ - Kubernetes + Helm + CI/CD
-11. ~~**DropBeat UI redesign**~~ ✅ - DJ discovery homepage, profile editing
-12. **Deploy to production** - Configure cloud K8s cluster and secrets
-13. **Run DB migration** - Apply `20250210000000_dj_metadata_and_payment_states.sql`
-14. **Test payment hold flow** - Verify with Stripe test cards + `stripe listen`
+11. ~~**DropBeat UI redesign v1**~~ ✅ - DJ discovery homepage, profile editing
+12. ~~**UI redesign v2**~~ ✅ - Full design system migration (Phase 9)
+    - shadcn/ui + Teal/Cyan design tokens
+    - BottomNav, DJ Detail, Offer Screen, Go Live, DJ History pages
+    - All views restyled to match design prototype
+13. **Deploy to production** - Configure cloud K8s cluster and secrets
+14. **Run DB migration** - Apply `20250210000000_dj_metadata_and_payment_states.sql`
+15. **Test payment hold flow** - Verify with Stripe test cards + `stripe listen`
 
 ---
 

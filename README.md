@@ -1,6 +1,6 @@
-# DJ Request
+# DropBeat
 
-A mobile-first platform that lets bar/club customers pay to request songs from DJs. We monetize an existing behavior (shouting requests) while giving DJs full control.
+A mobile-first paid song request platform for bars, clubs, and live DJs. Customers discover live DJs, request songs, and pay tips — DJs stay in control.
 
 **We are NOT a jukebox. We don't play music — we manage paid requests.** This sidesteps music licensing entirely.
 
@@ -8,10 +8,11 @@ A mobile-first platform that lets bar/club customers pay to request songs from D
 
 ## How It Works
 
-1. **Customer** scans QR code at venue
-2. **Customer** searches for a song, pays to submit request
-3. **DJ** sees request on dashboard, accepts or rejects
-4. **Everyone earns** — revenue splits between DJ, venue, and platform
+1. **Discover** — Listener opens app, browses live DJs nearby
+2. **Request** — Select a DJ, search for a song, set an offer amount
+3. **Pay** — Payment is authorized (held, not charged yet)
+4. **Play** — DJ accepts and plays the song → payment captured
+5. **Reject** — DJ declines → payment released, no charge
 
 ---
 
@@ -19,34 +20,82 @@ A mobile-first platform that lets bar/club customers pay to request songs from D
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Vite + React 18 (PWA) |
-| Backend | Python FastAPI |
-| Database | Supabase (PostgreSQL) |
-| Real-time | Supabase Realtime |
-| Payments | Stripe + Stripe Connect |
-| Song Search | Spotify Web API |
-| Deployment | Kubernetes + Helm |
+| Frontend | React 18 + Vite + TypeScript + Tailwind CSS (PWA) |
+| UI Components | shadcn/ui (planned migration) |
+| Backend | Python 3.10+ FastAPI |
+| Database | Supabase (PostgreSQL + Auth + Realtime) |
+| Payments | Stripe Connect (manual capture) |
+| Song Search | Spotify Web API (metadata only) |
+| Deployment | Kubernetes + Helm + Traefik |
 | CI/CD | GitHub Actions + Nx |
-| Ingress | Traefik |
 
 ---
 
 ## Project Structure
 
 ```
-/
 ├── apps/
-│   ├── frontend/       # Vite + React PWA (Customer + DJ)
-│   │   └── helm/       # Frontend Helm chart
-│   └── backend/        # Python FastAPI
-│       └── helm/       # Backend Helm chart
-├── helm/               # Infrastructure Helm chart (namespace, ingress)
+│   ├── frontend/          # React + Vite PWA (Listener + DJ)
+│   │   └── helm/          # Frontend Helm chart
+│   ├── frontend-e2e/      # Playwright E2E tests
+│   └── backend/           # Python FastAPI
+│       └── helm/          # Backend Helm chart
+├── helm/                  # Infrastructure Helm chart (namespace, ingress)
 ├── .github/
-│   ├── workflows/      # CI/CD pipelines
-│   └── scripts/        # Deployment scripts
-├── docs/               # Product spec & implementation steps
-└── supabase/           # Database migrations & RLS policies
+│   ├── workflows/         # CI/CD pipelines
+│   └── scripts/           # Deployment scripts
+├── docs/
+│   ├── idea.md            # Original brainstorm
+│   ├── spec.md            # Product specification
+│   ├── implementation-steps.md  # Phase-by-phase build log
+│   └── jukebox-app-design/     # UI design prototype (Next.js reference)
+└── supabase/              # Database migrations & RLS policies
 ```
+
+---
+
+## Design System
+
+| Property | Value |
+|----------|-------|
+| Theme | Dark (#0d0f14 background) |
+| Primary | Teal/Cyan (#51c2d8, HSL 160 84% 39%) |
+| Accent | Orange/Yellow (#ffcc00) |
+| Destructive | Red (#e74c3c) |
+| Fonts | Inter (UI) + Space Mono (prices) |
+| Layout | Mobile-first, max-width 500px |
+| Border Radius | 0.75rem (12px) |
+
+See [docs/jukebox-app-design/](docs/jukebox-app-design/) for the full UI design prototype with all components and views.
+
+---
+
+## Application Views
+
+### Listener Mode
+
+| View | Description |
+|------|-------------|
+| DJ Discovery | Browse live DJs with avatar, genre, rating, min price |
+| DJ Detail | DJ profile with stats, bio, venue info |
+| Song Search | Spotify-powered song search with selection |
+| Offer | Set custom offer amount (slider + quick buttons) |
+| Request Status | Real-time status tracking with progress bar |
+| My Requests | All past requests in expandable cards |
+
+### DJ Mode
+
+| View | Description |
+|------|-------------|
+| Dashboard | "DJ Cockpit" — incoming requests, queue, earnings |
+| Go Live | Set minimum price, start/stop session |
+| History | Earnings summary, completed/declined requests |
+
+### Navigation
+
+- Bottom navigation bar with Listener / DJ mode toggle
+- Listener tabs: DJs, Requests
+- DJ tabs: Dashboard, Go Live, History
 
 ---
 
@@ -58,10 +107,10 @@ npm install
 cd apps/backend && pip install -e .
 
 # Start frontend
-nx serve frontend
+npx nx serve frontend
 
 # Start backend
-nx serve backend
+npx nx serve backend
 ```
 
 - Frontend: http://localhost:3000
@@ -71,11 +120,12 @@ nx serve backend
 
 | URL | Purpose | User |
 |-----|---------|------|
-| `/` | Home page | All |
-| `/join/:venueSlug` | Join venue & request songs (via QR code) | Customer |
+| `/` | DJ Discovery (home) | Listener |
+| `/join/:venueSlug` | Song request + payment | Listener |
+| `/dj/:djId` | DJ detail page (planned) | Listener |
 | `/register` | DJ registration | DJ |
 | `/login` or `/dj` | DJ login | DJ |
-| `/dj/dashboard` | DJ dashboard (manage requests, venues, QR codes) | DJ |
+| `/dj/dashboard` | DJ dashboard | DJ |
 
 ---
 
@@ -84,42 +134,44 @@ nx serve backend
 ### Frontend (`apps/frontend/.env`)
 
 ```bash
-# Supabase (for Realtime)
+VITE_API_URL=http://localhost:8000/api
 VITE_SUPABASE_URL=http://localhost:54321
 VITE_SUPABASE_ANON_KEY=your-anon-key
-
-# Stripe
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
-
-# Backend API
-VITE_API_URL=http://localhost:8000/api
 ```
 
 ### Backend (`apps/backend/.env`)
 
 ```bash
-# Supabase
 SUPABASE_URL=http://localhost:54321
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-SUPABASE_JWT_SECRET=your-jwt-secret  # Found in Supabase Dashboard > Settings > API
-
-# Stripe
+SUPABASE_JWT_SECRET=your-jwt-secret
 STRIPE_SECRET_KEY=sk_test_xxx
 STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
-
-# Spotify
 SPOTIFY_CLIENT_ID=your-client-id
 SPOTIFY_CLIENT_SECRET=your-client-secret
 ```
 
 ---
 
+## Payment Flow
+
+```
+Customer submits request
+    → Payment authorized (held, not charged)
+        → DJ accepts → DJ marks played → Payment captured
+        → DJ rejects → Payment canceled (released, no charge)
+        → 6 days pass → Auto-expired (Stripe limit ~7 days)
+```
+
+Revenue split: DJ 50% / Venue 25% / Platform 25%
+
+---
+
 ## Deployment
 
 ### GitHub Actions Secrets
-
-Configure these secrets in your GitHub repository settings:
 
 | Secret | Description |
 |--------|-------------|
@@ -132,12 +184,10 @@ Configure these secrets in your GitHub repository settings:
 | `VITE_SUPABASE_URL` | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
-| `K8S_NAMESPACE` | Kubernetes namespace for deployment (default: `juke-box-service`) |
-| `INGRESS_HOST` | Domain for ingress routing (e.g., `jukebox.music.com`) |
+| `K8S_NAMESPACE` | Kubernetes namespace (default: `juke-box-service`) |
+| `INGRESS_HOST` | Domain for ingress routing |
 
 ### Kubernetes Secrets
-
-Create a secret for backend environment variables:
 
 ```bash
 kubectl create secret generic backend-secrets \
@@ -152,22 +202,15 @@ kubectl create secret generic backend-secrets \
   --from-literal=SPOTIFY_CLIENT_SECRET=your-client-secret
 ```
 
-### Deployment Commands
+### Deploy Commands
 
 ```bash
-# Auto deploy (on push to main)
+# Auto deploy (push to main)
 git push origin main
 
-# Manual deploy (via GitHub Actions)
-# Go to Actions > Manual Deploy > Run workflow
+# Manual deploy (GitHub Actions > Manual Deploy > Run workflow)
 
-# Deploy specific version
-npx nx run-many -t deploy --all
-```
-
-### Manual Helm Deployment
-
-```bash
+# Helm
 helm upgrade --install jukebox ./helm \
   --set namespace.name=juke-box-service \
   --set ingress.host=jukebox.music.com
@@ -178,8 +221,6 @@ helm upgrade --install jukebox ./helm \
 ## Testing
 
 ### Test Accounts
-
-For development and testing, use this pre-configured account:
 
 | Role | Email | Password |
 |------|-------|----------|
@@ -193,7 +234,7 @@ For development and testing, use this pre-configured account:
 | `4000 0000 0000 0002` | Declined card |
 | `4000 0000 0000 3220` | 3D Secure authentication |
 
-Use any future expiration date (e.g., `12/34`) and any 3-digit CVC.
+Use any future expiration date and any 3-digit CVC.
 
 ---
 
@@ -201,6 +242,7 @@ Use any future expiration date (e.g., `12/34`) and any 3-digit CVC.
 
 - [Product Specification](docs/spec.md)
 - [Implementation Steps](docs/implementation-steps.md)
+- [UI Design Prototype](docs/jukebox-app-design/) — Full reference design (Next.js)
 
 ---
 

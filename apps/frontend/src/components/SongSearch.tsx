@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Search, Disc3, Check, X } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { api, SpotifyTrack } from '../lib/api'
 
 interface SongSearchProps {
@@ -10,7 +12,6 @@ export default function SongSearch({ onSelect, disabled }: SongSearchProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SpotifyTrack[]>([])
   const [loading, setLoading] = useState(false)
-  const [showResults, setShowResults] = useState(false)
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null)
   const [isManualMode, setIsManualMode] = useState(false)
   const [manualTitle, setManualTitle] = useState('')
@@ -18,7 +19,6 @@ export default function SongSearch({ onSelect, disabled }: SongSearchProps) {
   const [error, setError] = useState<string | null>(null)
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
 
   // Debounced search
   const searchTracks = useCallback(async (searchQuery: string) => {
@@ -42,7 +42,6 @@ export default function SongSearch({ onSelect, disabled }: SongSearchProps) {
     }
   }, [])
 
-  // Handle query changes with debounce
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
@@ -63,22 +62,16 @@ export default function SongSearch({ onSelect, disabled }: SongSearchProps) {
     }
   }, [query, selectedTrack, searchTracks])
 
-  // Click outside to close results
+  // Update parent when manual input changes
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setShowResults(false)
-      }
+    if (isManualMode && manualTitle.trim()) {
+      onSelect(null, manualTitle, manualArtist || undefined)
     }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [isManualMode, manualTitle, manualArtist, onSelect])
 
   const handleSelectTrack = (track: SpotifyTrack) => {
     setSelectedTrack(track)
-    setQuery(track.name)
-    setShowResults(false)
+    setQuery('')
     setResults([])
     onSelect(track)
   }
@@ -95,7 +88,6 @@ export default function SongSearch({ onSelect, disabled }: SongSearchProps) {
     setSelectedTrack(null)
     setQuery('')
     setResults([])
-    setShowResults(false)
   }
 
   const handleSwitchToSearch = () => {
@@ -105,51 +97,35 @@ export default function SongSearch({ onSelect, disabled }: SongSearchProps) {
     onSelect(null)
   }
 
-  // Update parent when manual input changes
-  useEffect(() => {
-    if (isManualMode && manualTitle.trim()) {
-      onSelect(null, manualTitle, manualArtist || undefined)
-    }
-  }, [isManualMode, manualTitle, manualArtist, onSelect])
-
-  const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60000)
-    const seconds = Math.floor((ms % 60000) / 1000)
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }
-
   // Manual input mode
   if (isManualMode) {
     return (
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm text-gray-400">Manual Entry</label>
+          <span className="text-sm text-muted-foreground">Manual Entry</span>
           <button
             type="button"
             onClick={handleSwitchToSearch}
-            className="text-sm text-purple-400 hover:text-purple-300"
+            className="text-sm text-primary hover:text-primary/80 transition-colors"
           >
             Search Spotify instead
           </button>
         </div>
 
-        <input
-          type="text"
+        <Input
           value={manualTitle}
           onChange={(e) => setManualTitle(e.target.value)}
           placeholder="Song title *"
           disabled={disabled}
-          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none disabled:opacity-50"
-          required
+          className="h-12 rounded-xl bg-card border-border focus-visible:ring-primary"
         />
 
-        <input
-          type="text"
+        <Input
           value={manualArtist}
           onChange={(e) => setManualArtist(e.target.value)}
           placeholder="Artist (optional)"
           disabled={disabled}
-          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none disabled:opacity-50"
+          className="h-12 rounded-xl bg-card border-border focus-visible:ring-primary"
         />
       </div>
     )
@@ -158,31 +134,27 @@ export default function SongSearch({ onSelect, disabled }: SongSearchProps) {
   // Selected track display
   if (selectedTrack) {
     return (
-      <div className="space-y-2">
-        <label className="text-sm text-gray-400">Selected Song</label>
-        <div className="flex items-center gap-3 p-3 bg-gray-800 border border-gray-700 rounded-lg">
-          {selectedTrack.image_url && (
-            <img
-              src={selectedTrack.image_url}
-              alt={selectedTrack.album}
-              className="w-12 h-12 rounded"
-            />
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{selectedTrack.name}</p>
-            <p className="text-sm text-gray-400 truncate">
+      <div className="flex flex-col gap-2">
+        <span className="text-sm text-muted-foreground">Selected Song</span>
+        <div className="flex items-center gap-3 rounded-xl bg-card p-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary">
+            <Check className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span className="font-medium text-primary truncate">
+              {selectedTrack.name}
+            </span>
+            <span className="text-sm text-muted-foreground truncate">
               {selectedTrack.artists.join(', ')}
-            </p>
+            </span>
           </div>
           <button
             type="button"
             onClick={handleClearSelection}
             disabled={disabled}
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -191,88 +163,83 @@ export default function SongSearch({ onSelect, disabled }: SongSearchProps) {
 
   // Search mode
   return (
-    <div ref={containerRef} className="relative space-y-2">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm text-gray-400">Search for a song</label>
+        <span className="text-sm text-muted-foreground">Search for a song</span>
         <button
           type="button"
           onClick={handleSwitchToManual}
-          className="text-sm text-purple-400 hover:text-purple-300"
+          className="text-sm text-primary hover:text-primary/80 transition-colors"
         >
           Enter manually
         </button>
       </div>
 
+      {/* Search input */}
       <div className="relative">
-        <input
-          type="text"
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-            setShowResults(true)
-          }}
-          onFocus={() => setShowResults(true)}
-          placeholder="Search by song or artist..."
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search songs or artists..."
           disabled={disabled}
-          className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-purple-500 focus:outline-none disabled:opacity-50 pr-10"
+          className="h-12 rounded-xl bg-card pl-10 border-border placeholder:text-muted-foreground focus-visible:ring-primary"
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
 
-      {/* Error message */}
+      {/* Error */}
       {error && (
-        <p className="text-sm text-yellow-500">{error} - Try entering manually</p>
+        <p className="text-sm text-accent">{error} — Try entering manually</p>
       )}
 
-      {/* Search results dropdown */}
-      {showResults && results.length > 0 && (
-        <div className="absolute z-10 w-full mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl max-h-80 overflow-y-auto">
+      {/* Search results list */}
+      {results.length > 0 && (
+        <div className="flex flex-col gap-1">
           {results.map((track) => (
             <button
               key={track.id}
               type="button"
               onClick={() => handleSelectTrack(track)}
-              className="w-full flex items-center gap-3 p-3 hover:bg-gray-700 transition text-left"
+              className="flex items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-card"
             >
-              {track.image_url ? (
-                <img
-                  src={track.image_url}
-                  alt={track.album}
-                  className="w-10 h-10 rounded flex-shrink-0"
-                />
-              ) : (
-                <div className="w-10 h-10 bg-gray-600 rounded flex-shrink-0 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
-                  </svg>
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{track.name}</p>
-                <p className="text-sm text-gray-400 truncate">
-                  {track.artists.join(', ')} · {track.album}
-                </p>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary overflow-hidden">
+                {track.image_url ? (
+                  <img
+                    src={track.image_url}
+                    alt={track.album}
+                    className="h-10 w-10 rounded-lg object-cover"
+                  />
+                ) : (
+                  <Disc3 className="h-5 w-5 text-muted-foreground" />
+                )}
               </div>
-              <span className="text-xs text-gray-500 flex-shrink-0">
-                {formatDuration(track.duration_ms)}
-              </span>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <span className="text-sm font-medium text-foreground truncate">
+                  {track.name}
+                </span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {track.artists.join(', ')} · {track.album}
+                </span>
+              </div>
             </button>
           ))}
         </div>
       )}
 
-      {/* No results message */}
-      {showResults && query.trim() && !loading && results.length === 0 && !error && (
-        <div className="absolute z-10 w-full mt-1 p-4 bg-gray-800 border border-gray-700 rounded-lg text-center">
-          <p className="text-gray-400">No results found</p>
+      {/* No results */}
+      {query.trim() && !loading && results.length === 0 && !error && (
+        <div className="flex flex-col items-center gap-2 py-8 text-center">
+          <Disc3 className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">No songs found</p>
           <button
             type="button"
             onClick={handleSwitchToManual}
-            className="mt-2 text-sm text-purple-400 hover:text-purple-300"
+            className="text-sm text-primary hover:text-primary/80 transition-colors"
           >
             Enter song manually
           </button>

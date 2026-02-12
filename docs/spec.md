@@ -1,8 +1,8 @@
-# DJ Request - Product Specification
+# DropBeat - Product Specification
 
 ## Overview
 
-DJ Request is a mobile-first platform that enables bar/club customers to pay for song requests to DJs. It monetizes an existing behavior (shouting requests at DJs) while giving DJs full control over their queue.
+DropBeat is a mobile-first platform that enables bar/club customers to discover live DJs, request songs, and pay tips. It monetizes an existing behavior (shouting requests at DJs) while giving DJs full control over their queue.
 
 **Key Differentiator**: We are NOT a jukebox. We don't play music — we manage paid requests. This sidesteps music licensing entirely.
 
@@ -27,53 +27,89 @@ A paid, orderly, DJ-friendly way for the crowd to request songs — where:
 
 ---
 
+## Design System
+
+| Property | Value |
+|----------|-------|
+| Theme | Dark (#0d0f14 background) |
+| Primary | Teal/Cyan (#51c2d8, HSL 160 84% 39%) |
+| Accent | Orange/Yellow (#ffcc00) |
+| Destructive | Red (#e74c3c) |
+| Fonts | Inter (UI) + Space Mono (prices/monospace) |
+| Layout | Mobile-first, max-width 500px |
+| Border Radius | 0.75rem (12px) |
+| UI Library | shadcn/ui components |
+| Navigation | Bottom nav bar with Listener/DJ mode toggle |
+
+### Animations
+- `pulse-live`: Pulsing effect for live DJ indicators
+- `slide-up`: Page transition (0.3s ease-out)
+- `progress-pulse`: Status indicator breathing effect
+
+---
+
 ## User Flows
 
-### Customer Flow
+### Listener Flow (Updated)
 
 ```
-1. Scan QR code (near DJ booth / bar / table)
+1. Open app → DJ Discovery page
+   • Browse live DJs with avatar, genre, rating, min price
+   • See "Live Now" section with animated indicators
          ↓
-2. PWA opens → Auto-join this venue/DJ session
+2. Tap DJ card → DJ Detail page
+   • View DJ profile, stats, bio, venue info
+   • Trust signal: "Only charged if song is played"
          ↓
-3. Search for a song (Spotify API / text input)
+3. Tap "Request a Song" → Song Search
+   • Search via Spotify API
+   • Select song with checkmark
          ↓
-4. Choose request tier:
-   • Normal Request (€2)
-   • Priority Request (€5)
-   • Play ASAP (€10) — DJ can still refuse
+4. Set offer amount → Offer Screen
+   • Quick amount buttons (€5, €10, €15, €20, €30, €50)
+   • Slider for custom amount (min = DJ's minimum price)
          ↓
-5. Optional: Add message ("Happy birthday Anna!")
+5. Pay (Apple Pay / Google Pay / Card)
+   • Payment authorized (held, not charged)
          ↓
-6. Pay (Apple Pay / Google Pay / Card)
-         ↓
-7. See request status (pending → accepted/rejected → played)
+6. Request Status page
+   • Animated status icon
+   • Progress bar: pending → accepted → playing → completed
+   • Cancel/Withdraw option
 ```
 
-**No login required for MVP** — frictionless experience.
+**No login required for listeners** — frictionless experience.
 
-### DJ Flow
+### Legacy Listener Flow (QR Code)
 
 ```
-1. Log in to DJ Dashboard (tablet/phone)
+1. Scan QR code → /join/:venueSlug
+   • Direct access to song request form
+   • Fixed tier pricing (Normal €2 / Priority €5 / ASAP €10)
+```
+
+### DJ Flow (Updated)
+
+```
+1. Log in → DJ Dashboard ("DJ Cockpit")
+   • Total earnings display
+   • Stats: Pending / In Queue / Potential earnings
          ↓
-2. Create or join a venue session
+2. Go Live page
+   • Set minimum price (€1–€50 slider)
+   • Set venue name
+   • Tap "GO LIVE" button
          ↓
-3. See incoming requests in real-time
-   • Priority requests float to top
-   • Shows: Song, Artist, Tier, Message, Time
+3. Dashboard shows incoming requests
+   • Request cards: requester name, song, artist, offer amount
+   • Actions: Accept / Reject per request
+   • Queue: accepted songs ready to play
+   • "Mark Played" to complete and charge
          ↓
-4. For each request, can:
-   • ✓ Accept
-   • ✗ Skip (with optional reason)
-   • ⏸ Delay
-   • ✓ Mark as Played
-         ↓
-5. Controls available:
-   • Pause all requests
-   • Block specific songs/artists
-   • Set genre filters
-   • View earnings
+4. DJ History
+   • Total earnings summary
+   • Songs played vs declined stats
+   • Past request list with amounts
 ```
 
 **Mantra: "The DJ is always in control."**
@@ -102,7 +138,15 @@ A paid, orderly, DJ-friendly way for the crowd to request songs — where:
 
 ## Pricing Model
 
-### Customer Pricing (Venue Configurable)
+### Offer-Based Pricing (New)
+
+DJs set a minimum price (€1–€50). Listeners choose their own offer amount via:
+- Quick buttons: €5, €10, €15, €20, €30, €50
+- Custom slider: min = DJ's minimum, max = €100
+
+Higher offers naturally get DJ attention. No fixed tiers required.
+
+### Legacy Tier Pricing (QR join flow)
 
 | Tier | Default Price | Description |
 |------|---------------|-------------|
@@ -167,24 +211,21 @@ A paid, orderly, DJ-friendly way for the crowd to request songs — where:
 
 ## Technical Requirements
 
-### Frontend (Customer)
+### Frontend
 
-- **Type**: Progressive Web App (PWA)
-- **Why**: Instant access via QR, no App Store friction
-- **Key features**: Offline-capable, installable, push notifications
-
-### Frontend (DJ Dashboard)
-
-- **Type**: Responsive web app
-- **Optimized for**: Tablet in landscape mode
-- **Key features**: Real-time updates, large touch targets, dark mode
+- **Type**: Progressive Web App (PWA) — React 18 + Vite + TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **Layout**: Mobile-first (max-width 500px), dark theme only
+- **Navigation**: Bottom nav bar with role-based tabs (Listener/DJ)
+- **Key features**: Offline-capable, installable, real-time updates
+- **Design reference**: `docs/jukebox-app-design/` (Next.js prototype — UI only, framework stays React+Vite)
 
 ### Backend
 
-- **Runtime**: Node.js
-- **Database**: PostgreSQL (via Supabase) or Firebase
-- **Real-time**: WebSockets or Supabase Realtime
-- **Auth**: Magic link for DJs, anonymous for customers
+- **Runtime**: Python FastAPI
+- **Database**: Supabase (PostgreSQL + Auth)
+- **Real-time**: Supabase Realtime (WebSocket subscriptions)
+- **Auth**: Email/password for DJs, anonymous for listeners
 
 ### Payments
 

@@ -17,6 +17,7 @@
     "nx": "21.4.0",
     "supabase": "^2.23.0",
     "swc-loader": "0.1.15",
+    "tailwindcss": "^4.1.18",
     "tslib": "^2.3.0",
     "typescript": "~5.8.2"
   },

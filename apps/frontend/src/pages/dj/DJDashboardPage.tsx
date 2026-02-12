@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
+import { Check, X, Play, Disc3, DollarSign, Clock, Zap, ArrowLeft, Settings, LogOut, User, QrCode, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import { api, Venue, Request, SessionWithVenue, DEFAULT_PRICING, DEFAULT_CONTENT_FILTERS, ContentFilters } from '../../lib/api'
 import { useRequestsRealtime } from '../../hooks/useRequestsRealtime'
 import { useAuth } from '../../contexts/AuthContext'
@@ -8,18 +11,6 @@ import { useAuth } from '../../contexts/AuthContext'
 // Helper to get pricing from venue settings with defaults
 function getVenuePricing(venue: Venue) {
   return venue.settings?.pricing ?? DEFAULT_PRICING
-}
-
-const TIER_COLORS = {
-  asap: 'bg-red-600',
-  priority: 'bg-yellow-500',
-  normal: 'bg-gray-600',
-}
-
-const TIER_LABELS = {
-  asap: 'ASAP',
-  priority: 'Priority',
-  normal: 'Normal',
 }
 
 interface ConnectStatus {
@@ -99,7 +90,6 @@ export default function DJDashboardPage() {
       setVenues(venuesData)
       setActiveSession(sessionData)
 
-      // Fetch Connect status
       await fetchConnectStatus()
     } catch (error) {
       console.error('Failed to fetch data:', error)
@@ -117,7 +107,6 @@ export default function DJDashboardPage() {
 
     try {
       await api.createSession(selectedVenueId, dj.id)
-      // Refetch to get session with venue
       const sessionData = await api.getDJActiveSession(dj.id)
       setActiveSession(sessionData)
     } catch (error) {
@@ -127,7 +116,6 @@ export default function DJDashboardPage() {
 
   const handleEndSession = async () => {
     if (!activeSession) return
-
     if (!confirm('End this session? All pending requests will remain.')) return
 
     try {
@@ -153,10 +141,8 @@ export default function DJDashboardPage() {
   const handleRequestAction = async (requestId: string, status: Request['status']) => {
     try {
       await api.updateRequest(requestId, status)
-      // Realtime subscription will automatically update the UI
     } catch (error) {
       console.error('Failed to update request:', error)
-      // Refetch on error to ensure consistency
       refetchRequests()
     }
   }
@@ -209,7 +195,6 @@ export default function DJDashboardPage() {
 
     setVenueLoading(true)
     try {
-      // Parse blocked artists from comma-separated input
       const blockedArtists = blockedArtistsInput
         .split(',')
         .map(a => a.trim())
@@ -294,7 +279,6 @@ export default function DJDashboardPage() {
     URL.revokeObjectURL(url)
   }
 
-  // Handle Stripe Connect onboarding
   const handleConnectOnboard = async () => {
     if (!dj) return
     setConnectLoading(true)
@@ -305,7 +289,6 @@ export default function DJDashboardPage() {
         `${baseUrl}/dj/dashboard?connect=success`,
         `${baseUrl}/dj/dashboard?connect=refresh`
       )
-      // Redirect to Stripe onboarding
       window.location.href = result.onboarding_url
     } catch (error) {
       console.error('Failed to start onboarding:', error)
@@ -313,7 +296,6 @@ export default function DJDashboardPage() {
     }
   }
 
-  // Handle Stripe Dashboard link
   const handleViewDashboard = async () => {
     if (!dj) return
     try {
@@ -324,14 +306,11 @@ export default function DJDashboardPage() {
     }
   }
 
-  // Handle connect return URL parameters
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search)
     const connectParam = searchParams.get('connect')
     if (connectParam === 'success' || connectParam === 'refresh') {
-      // Clean URL
       window.history.replaceState({}, '', '/dj/dashboard')
-      // Refresh connect status
       if (dj) {
         fetchConnectStatus()
       }
@@ -340,72 +319,71 @@ export default function DJDashboardPage() {
 
   if (loading || authLoading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
-  const pendingRequests = requests.filter(r => r.status === 'pending' || r.status === 'accepted')
+  const pendingRequests = requests.filter(r => r.status === 'pending')
+  const acceptedRequests = requests.filter(r => r.status === 'accepted')
   const playedRequests = requests.filter(r => r.status === 'played')
+  const totalEarnings = playedRequests.reduce((sum, r) => sum + r.amount, 0)
+  const pendingEarnings = [...pendingRequests, ...acceptedRequests].reduce((sum, r) => sum + r.amount, 0)
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="border-b border-gray-800 p-4">
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-md px-4 pb-20">
+        {/* Header */}
+        <header className="flex items-center justify-between pt-6 pb-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/')}
-              className="text-gray-500 hover:text-white transition"
-              title="Back to DropBeat"
+              className="flex items-center justify-center rounded-lg p-1 text-muted-foreground hover:text-foreground transition-colors"
+              type="button"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" />
-              </svg>
+              <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
-              <h1 className="text-xl font-bold">{dj?.name || 'DJ Dashboard'}</h1>
-            {activeSession && (
-              <p className="text-sm text-gray-400">
-                @ {activeSession.venues?.name || 'Unknown Venue'}
-              </p>
-            )}
+              <h1 className="text-lg font-bold text-foreground">{dj?.name || 'DJ Dashboard'}</h1>
+              {activeSession && (
+                <p className="text-sm text-muted-foreground">
+                  @ {activeSession.venues?.name || 'Unknown Venue'}
+                </p>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1">
             <button
               onClick={handleEditProfile}
-              className="text-gray-400 hover:text-white text-sm"
+              className="flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:text-foreground transition-colors"
+              type="button"
+              title="Profile"
             >
-              Profile
+              <User className="h-4 w-4" />
             </button>
             <button
               onClick={handleLogout}
-              className="text-gray-400 hover:text-white text-sm"
+              className="flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:text-foreground transition-colors"
+              type="button"
+              title="Logout"
             >
-              Logout
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-4xl mx-auto p-4">
         {/* Stripe Connect Status */}
         {connectStatus && !connectStatus.charges_enabled && (
-          <div className={`rounded-lg p-4 mb-6 ${
-            connectStatus.connected
-              ? 'bg-orange-900/50 border border-orange-600'
-              : 'bg-yellow-900/50 border border-yellow-600'
-          }`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold">
+          <div className="rounded-xl bg-accent/10 border border-accent/30 p-4 mb-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">
                   {connectStatus.connected
                     ? 'Complete your Stripe setup'
                     : 'Set up Stripe to receive payouts'}
                 </p>
-                <p className="text-sm text-gray-400">
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {connectStatus.connected
                     ? 'Finish setting up your account to start receiving payments'
                     : 'Connect your bank account to receive money from song requests'}
@@ -414,7 +392,8 @@ export default function DJDashboardPage() {
               <button
                 onClick={handleConnectOnboard}
                 disabled={connectLoading}
-                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg font-semibold text-sm transition whitespace-nowrap"
+                className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                type="button"
               >
                 {connectLoading ? 'Loading...' : connectStatus.connected ? 'Complete Setup' : 'Connect Stripe'}
               </button>
@@ -423,249 +402,241 @@ export default function DJDashboardPage() {
         )}
 
         {connectStatus?.charges_enabled && (
-          <div className="bg-green-900/50 border border-green-600 rounded-lg p-4 mb-6">
+          <div className="rounded-xl bg-primary/10 border border-primary/30 p-4 mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-green-400">✅</span>
-                <p className="font-semibold text-green-300">Stripe Connected</p>
+                <Check className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold text-primary">Stripe Connected</p>
               </div>
               <button
                 onClick={handleViewDashboard}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition"
+                className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary/80 transition-colors"
+                type="button"
               >
-                View Stripe Dashboard
+                View Dashboard
               </button>
             </div>
           </div>
         )}
-        {/* No active session - Start Session UI */}
+
+        {/* No Active Session — Offline + Start Session + Venues */}
         {!activeSession && (
-          <div className="bg-gray-900 rounded-lg p-6 text-center mb-6">
-            <h2 className="text-xl font-semibold mb-4">Start a Session</h2>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col items-center justify-center gap-6 py-16 text-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary">
+                <Zap className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <p className="text-lg font-bold text-foreground">You are offline</p>
+                <p className="text-sm text-muted-foreground">
+                  Start a session to receive song requests
+                </p>
+              </div>
 
-            {venues.length === 0 ? (
-              <p className="text-gray-400">No venues available. Create one below!</p>
-            ) : (
-              <div className="space-y-4">
-                <select
-                  value={selectedVenueId}
-                  onChange={(e) => setSelectedVenueId(e.target.value)}
-                  className="w-full max-w-xs px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg"
-                >
-                  <option value="">Select a venue</option>
-                  {venues.map((venue) => (
-                    <option key={venue.id} value={venue.id}>
-                      {venue.name}
-                    </option>
-                  ))}
-                </select>
+              {venues.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Create a venue first!</p>
+              ) : (
+                <div className="flex flex-col items-center gap-3 w-full max-w-xs">
+                  <select
+                    value={selectedVenueId}
+                    onChange={(e) => setSelectedVenueId(e.target.value)}
+                    className="w-full rounded-xl bg-card border border-border px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Select a venue</option>
+                    {venues.map((venue) => (
+                      <option key={venue.id} value={venue.id}>
+                        {venue.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleStartSession}
+                    disabled={!selectedVenueId}
+                    className="w-full rounded-xl bg-primary px-8 py-3 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                    type="button"
+                  >
+                    Go Live
+                  </button>
+                </div>
+              )}
+            </div>
 
+            {/* Venue Management */}
+            <div className="rounded-xl bg-card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">My Venues</h2>
                 <button
-                  onClick={handleStartSession}
-                  disabled={!selectedVenueId}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg font-semibold transition"
+                  onClick={() => setShowVenueManager(!showVenueManager)}
+                  className="text-xs text-primary hover:text-primary/80 transition-colors"
+                  type="button"
                 >
-                  Start Session
+                  {showVenueManager ? 'Hide' : 'Manage'}
                 </button>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Venue Management Section */}
-        {!activeSession && (
-          <div className="bg-gray-900 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">My Venues</h2>
-              <button
-                onClick={() => setShowVenueManager(!showVenueManager)}
-                className="text-gray-400 hover:text-white text-sm"
-              >
-                {showVenueManager ? 'Hide' : 'Manage'}
-              </button>
-            </div>
-
-            {showVenueManager && (
-              <div className="space-y-4">
-                {/* Venue List */}
-                {venues.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No venues yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {venues.map((venue) => {
-                      const pricing = getVenuePricing(venue)
-                      return (
-                        <div key={venue.id} className="bg-gray-800 rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <p className="font-semibold">{venue.name}</p>
-                              <p className="text-gray-400 text-sm">/{venue.slug}</p>
+              {showVenueManager && (
+                <div className="flex flex-col gap-3">
+                  {venues.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">No venues yet</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {venues.map((venue) => {
+                        const pricing = getVenuePricing(venue)
+                        const currency = pricing.currency === 'EUR' ? '€' : pricing.currency
+                        return (
+                          <div key={venue.id} className="rounded-lg bg-secondary p-3">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{venue.name}</p>
+                                <p className="text-xs text-muted-foreground">/{venue.slug}</p>
+                              </div>
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => handleEditVenue(venue)}
+                                  className="flex items-center justify-center rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
+                                  type="button"
+                                  title="Settings"
+                                >
+                                  <Settings className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleShowQR(venue)}
+                                  className="flex items-center justify-center rounded-lg p-1.5 text-primary hover:text-primary/80 hover:bg-card transition-colors"
+                                  type="button"
+                                  title="QR Code"
+                                >
+                                  <QrCode className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleEditVenue(venue)}
-                                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition"
-                              >
-                                Settings
-                              </button>
-                              <button
-                                onClick={() => handleShowQR(venue)}
-                                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-sm transition"
-                              >
-                                QR Code
-                              </button>
+                            <div className="flex gap-3 text-xs text-muted-foreground">
+                              <span>Min: {currency}{(pricing.normal / 100).toFixed(0)}</span>
+                              <span>Priority: {currency}{(pricing.priority / 100).toFixed(0)}</span>
+                              <span>ASAP: {currency}{(pricing.asap / 100).toFixed(0)}</span>
                             </div>
                           </div>
-                          <div className="flex gap-4 text-sm text-gray-400">
-                            <span>Normal: {pricing.currency === 'EUR' ? '€' : pricing.currency}{(pricing.normal / 100).toFixed(0)}</span>
-                            <span>Priority: {pricing.currency === 'EUR' ? '€' : pricing.currency}{(pricing.priority / 100).toFixed(0)}</span>
-                            <span>ASAP: {pricing.currency === 'EUR' ? '€' : pricing.currency}{(pricing.asap / 100).toFixed(0)}</span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {/* Create New Venue Button */}
-                {!showCreateVenue ? (
-                  <button
-                    onClick={() => setShowCreateVenue(true)}
-                    className="w-full py-3 border-2 border-dashed border-gray-700 hover:border-gray-600 rounded-lg text-gray-400 hover:text-white transition"
-                  >
-                    + Add New Venue
-                  </button>
-                ) : (
-                  <form onSubmit={handleCreateVenue} className="bg-gray-800 rounded-lg p-4 space-y-3">
-                    <h3 className="font-semibold">Create New Venue</h3>
-                    <input
-                      type="text"
-                      placeholder="Venue Name"
-                      value={newVenueName}
-                      onChange={(e) => setNewVenueName(e.target.value)}
-                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg"
-                      required
-                    />
-                    <input
-                      type="text"
-                      placeholder="URL Slug (e.g. my-club)"
-                      value={newVenueSlug}
-                      onChange={(e) => setNewVenueSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
-                      className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg"
-                      required
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowCreateVenue(false)
-                          setNewVenueName('')
-                          setNewVenueSlug('')
-                        }}
-                        className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={venueLoading || !newVenueName.trim() || !newVenueSlug.trim()}
-                        className="flex-1 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 rounded-lg font-semibold transition"
-                      >
-                        {venueLoading ? 'Creating...' : 'Create'}
-                      </button>
+                        )
+                      })}
                     </div>
-                  </form>
-                )}
-              </div>
-            )}
+                  )}
+
+                  {!showCreateVenue ? (
+                    <button
+                      onClick={() => setShowCreateVenue(true)}
+                      className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-border rounded-xl text-muted-foreground hover:text-foreground hover:border-muted-foreground transition-colors"
+                      type="button"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add New Venue
+                    </button>
+                  ) : (
+                    <form onSubmit={handleCreateVenue} className="rounded-lg bg-secondary p-4 flex flex-col gap-3">
+                      <h3 className="text-sm font-semibold text-foreground">Create New Venue</h3>
+                      <Input
+                        type="text"
+                        placeholder="Venue Name"
+                        value={newVenueName}
+                        onChange={(e) => setNewVenueName(e.target.value)}
+                        className="h-11 rounded-xl bg-card border-border"
+                        required
+                      />
+                      <Input
+                        type="text"
+                        placeholder="URL Slug (e.g. my-club)"
+                        value={newVenueSlug}
+                        onChange={(e) => setNewVenueSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                        className="h-11 rounded-xl bg-card border-border"
+                        required
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCreateVenue(false)
+                            setNewVenueName('')
+                            setNewVenueSlug('')
+                          }}
+                          className="flex-1 py-2.5 rounded-lg bg-card text-foreground font-medium hover:bg-card/80 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={venueLoading || !newVenueName.trim() || !newVenueSlug.trim()}
+                          className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground font-semibold transition-colors hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          {venueLoading ? 'Creating...' : 'Create'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* Edit Venue Settings Modal */}
         {editingVenue && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md my-8">
-              <h2 className="text-xl font-semibold mb-4">Venue Settings - {editingVenue.name}</h2>
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-card rounded-2xl p-6 w-full max-w-md my-8 border border-border">
+              <h2 className="text-lg font-bold text-foreground mb-4">{editingVenue.name} — Settings</h2>
 
-              {/* Pricing Section */}
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Pricing</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Normal Tier (cents)</label>
-                    <input
-                      type="number"
-                      value={editPricing.normal}
-                      onChange={(e) => setEditPricing({ ...editPricing, normal: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-                      min="0"
-                      step="50"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">= €{(editPricing.normal / 100).toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">Priority Tier (cents)</label>
-                    <input
-                      type="number"
-                      value={editPricing.priority}
-                      onChange={(e) => setEditPricing({ ...editPricing, priority: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-                      min="0"
-                      step="50"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">= €{(editPricing.priority / 100).toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-gray-400 mb-1">ASAP Tier (cents)</label>
-                    <input
-                      type="number"
-                      value={editPricing.asap}
-                      onChange={(e) => setEditPricing({ ...editPricing, asap: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg"
-                      min="0"
-                      step="50"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">= €{(editPricing.asap / 100).toFixed(2)}</p>
-                  </div>
+                <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Pricing</h3>
+                <div className="flex flex-col gap-3">
+                  {(['normal', 'priority', 'asap'] as const).map((tier) => (
+                    <div key={tier}>
+                      <label className="block text-sm text-muted-foreground mb-1 capitalize">{tier} Tier (cents)</label>
+                      <Input
+                        type="number"
+                        value={editPricing[tier]}
+                        onChange={(e) => setEditPricing({ ...editPricing, [tier]: parseInt(e.target.value) || 0 })}
+                        className="h-11 rounded-xl bg-secondary border-border"
+                        min="0"
+                        step="50"
+                      />
+                      <p className="text-[10px] text-muted-foreground mt-1">= €{(editPricing[tier] / 100).toFixed(2)}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Content Filters Section */}
-              <div className="border-t border-gray-700 pt-6">
-                <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Content Filters</h3>
-                <div className="space-y-4">
+              <div className="border-t border-border pt-5">
+                <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Content Filters</h3>
+                <div className="flex flex-col gap-3">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={editContentFilters.enabled}
                       onChange={(e) => setEditContentFilters({ ...editContentFilters, enabled: e.target.checked })}
-                      className="w-5 h-5 rounded bg-gray-800 border-gray-600 text-purple-600 focus:ring-purple-500"
+                      className="w-4 h-4 rounded bg-secondary border-border text-primary focus:ring-primary"
                     />
-                    <span className="text-gray-300">Enable content filters</span>
+                    <span className="text-sm text-foreground">Enable content filters</span>
                   </label>
 
                   {editContentFilters.enabled && (
-                    <div className="pl-8 space-y-4">
+                    <div className="pl-7 flex flex-col gap-3">
                       <label className="flex items-center gap-3 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={editContentFilters.block_explicit}
                           onChange={(e) => setEditContentFilters({ ...editContentFilters, block_explicit: e.target.checked })}
-                          className="w-5 h-5 rounded bg-gray-800 border-gray-600 text-purple-600 focus:ring-purple-500"
+                          className="w-4 h-4 rounded bg-secondary border-border text-primary focus:ring-primary"
                         />
-                        <span className="text-gray-300">Block explicit content</span>
+                        <span className="text-sm text-foreground">Block explicit content</span>
                       </label>
 
                       <div>
-                        <label className="block text-sm text-gray-400 mb-1">Blocked artists</label>
+                        <label className="block text-sm text-muted-foreground mb-1">Blocked artists</label>
                         <textarea
                           value={blockedArtistsInput}
                           onChange={(e) => setBlockedArtistsInput(e.target.value)}
                           placeholder="Artist 1, Artist 2, Artist 3..."
-                          className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg resize-none"
+                          className="w-full rounded-xl bg-secondary border border-border px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
                           rows={2}
                         />
-                        <p className="text-xs text-gray-500 mt-1">Comma-separated list of artist names to block</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">Comma-separated list</p>
                       </div>
                     </div>
                   )}
@@ -675,14 +646,16 @@ export default function DJDashboardPage() {
               <div className="flex gap-2 mt-6">
                 <button
                   onClick={() => setEditingVenue(null)}
-                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition"
+                  className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground font-medium hover:bg-secondary/80 transition-colors"
+                  type="button"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveVenue}
                   disabled={venueLoading}
-                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg font-semibold transition"
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  type="button"
                 >
                   {venueLoading ? 'Saving...' : 'Save'}
                 </button>
@@ -693,12 +666,12 @@ export default function DJDashboardPage() {
 
         {/* QR Code Modal */}
         {qrVenue && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-            <div className="bg-gray-900 rounded-lg p-6 w-full max-w-sm text-center">
-              <h2 className="text-xl font-semibold mb-2">{qrVenue.name}</h2>
-              <p className="text-gray-400 text-sm mb-4">Scan to request songs</p>
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-card rounded-2xl p-6 w-full max-w-sm text-center border border-border">
+              <h2 className="text-lg font-bold text-foreground mb-1">{qrVenue.name}</h2>
+              <p className="text-sm text-muted-foreground mb-4">Scan to request songs</p>
 
-              <div className="bg-white p-4 rounded-lg inline-block mb-4">
+              <div className="bg-white p-4 rounded-xl inline-block mb-4">
                 <QRCodeSVG
                   id="venue-qr-svg"
                   value={`${window.location.origin}/join/${qrVenue.slug}`}
@@ -707,20 +680,22 @@ export default function DJDashboardPage() {
                 />
               </div>
 
-              <p className="text-gray-500 text-xs mb-4 break-all">
+              <p className="text-[10px] text-muted-foreground mb-4 break-all">
                 {window.location.origin}/join/{qrVenue.slug}
               </p>
 
               <div className="flex gap-2">
                 <button
                   onClick={() => setQrVenue(null)}
-                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition"
+                  className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground font-medium hover:bg-secondary/80 transition-colors"
+                  type="button"
                 >
                   Close
                 </button>
                 <button
                   onClick={handleDownloadQR}
-                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition"
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold transition-colors hover:bg-primary/90"
+                  type="button"
                 >
                   Download SVG
                 </button>
@@ -731,24 +706,24 @@ export default function DJDashboardPage() {
 
         {/* Profile Editor Modal */}
         {showProfileEditor && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md my-8">
-              <h2 className="text-xl font-semibold mb-4">DJ Profile</h2>
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-card rounded-2xl p-6 w-full max-w-md my-8 border border-border">
+              <h2 className="text-lg font-bold text-foreground mb-4">DJ Profile</h2>
 
-              {/* Genres */}
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Genres</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Genres</h3>
                 <div className="flex flex-wrap gap-2">
                   {AVAILABLE_GENRES.map((genre) => (
                     <button
                       key={genre}
                       type="button"
                       onClick={() => toggleGenre(genre)}
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition ${
+                      className={cn(
+                        'px-3 py-1.5 rounded-full text-sm font-medium transition-colors',
                         profileGenres.includes(genre)
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                      }`}
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary text-muted-foreground hover:text-foreground'
+                      )}
                     >
                       {genre}
                     </button>
@@ -756,30 +731,31 @@ export default function DJDashboardPage() {
                 </div>
               </div>
 
-              {/* Profile Image */}
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wide">Profile Image URL</h3>
-                <input
+                <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">Profile Image URL</h3>
+                <Input
                   type="url"
                   value={profileImage}
                   onChange={(e) => setProfileImage(e.target.value)}
                   placeholder="https://example.com/photo.jpg"
-                  className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:border-purple-500"
+                  className="h-11 rounded-xl bg-secondary border-border"
                 />
-                <p className="text-xs text-gray-500 mt-1">Paste a URL to your profile photo</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Paste a URL to your profile photo</p>
               </div>
 
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowProfileEditor(false)}
-                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition"
+                  className="flex-1 py-2.5 rounded-xl bg-secondary text-foreground font-medium hover:bg-secondary/80 transition-colors"
+                  type="button"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveProfile}
                   disabled={profileLoading}
-                  className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 rounded-lg font-semibold transition"
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  type="button"
                 >
                   {profileLoading ? 'Saving...' : 'Save'}
                 </button>
@@ -788,100 +764,118 @@ export default function DJDashboardPage() {
           </div>
         )}
 
-        {/* Active session */}
+        {/* Active Session — DJ Cockpit */}
         {activeSession && (
-          <>
+          <div className="flex flex-col gap-5">
+            {/* Cockpit header with LIVE indicator + earnings */}
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-0.5">
+                <h2 className="text-lg font-bold text-foreground">DJ Cockpit</h2>
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-75 animate-pulse-live" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                  </span>
+                  <span className="text-xs text-primary font-medium">LIVE</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="font-mono text-lg font-bold text-primary">
+                  €{(totalEarnings / 100).toFixed(0)}
+                </span>
+                <span className="text-[10px] text-muted-foreground">earned</span>
+              </div>
+            </div>
+
+            {/* Quick stats row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center gap-1 rounded-xl bg-card p-3">
+                <span className="font-mono text-xl font-bold text-accent">{pendingRequests.length}</span>
+                <span className="text-[10px] text-muted-foreground">Pending</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 rounded-xl bg-card p-3">
+                <span className="font-mono text-xl font-bold text-primary">{acceptedRequests.length}</span>
+                <span className="text-[10px] text-muted-foreground">In Queue</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 rounded-xl bg-card p-3">
+                <span className="font-mono text-xl font-bold text-foreground">
+                  €{(pendingEarnings / 100).toFixed(0)}
+                </span>
+                <span className="text-[10px] text-muted-foreground">Potential</span>
+              </div>
+            </div>
+
             {/* Session Controls */}
-            <div className="flex gap-3 mb-6">
+            <div className="flex gap-2">
               <button
                 onClick={handlePauseSession}
-                className={`flex-1 py-3 rounded-lg font-semibold transition ${
+                className={cn(
+                  'flex-1 py-3 rounded-xl font-semibold transition-colors',
                   activeSession.status === 'paused'
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-yellow-600 hover:bg-yellow-700'
-                }`}
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-accent/10 text-accent hover:bg-accent/20'
+                )}
+                type="button"
               >
                 {activeSession.status === 'paused' ? 'Resume Requests' : 'Pause Requests'}
               </button>
               <button
                 onClick={handleEndSession}
-                className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition"
+                className="px-5 py-3 rounded-xl bg-destructive/10 text-destructive font-semibold hover:bg-destructive/20 transition-colors"
+                type="button"
               >
-                End Session
+                End
               </button>
             </div>
 
             {activeSession.status === 'paused' && (
-              <div className="bg-yellow-900/50 border border-yellow-600 rounded-lg p-4 mb-6 text-center">
-                <p className="text-yellow-300 font-semibold">Requests are paused</p>
+              <div className="rounded-xl bg-accent/10 border border-accent/30 p-3 text-center">
+                <p className="text-sm text-accent font-semibold">Requests are paused</p>
               </div>
             )}
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-gray-900 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold">{pendingRequests.length}</p>
-                <p className="text-sm text-gray-400">Queue</p>
-              </div>
-              <div className="bg-gray-900 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold">{playedRequests.length}</p>
-                <p className="text-sm text-gray-400">Played</p>
-              </div>
-              <div className="bg-gray-900 rounded-lg p-4 text-center">
-                <p className="text-2xl font-bold">
-                  €{(playedRequests.reduce((sum, r) => sum + r.amount, 0) / 100).toFixed(0)}
-                </p>
-                <p className="text-sm text-gray-400">Captured</p>
-              </div>
-            </div>
-
-            {/* Request Queue */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Request Queue</h2>
-
-              {pendingRequests.length === 0 ? (
-                <div className="bg-gray-900 rounded-lg p-8 text-center">
-                  <p className="text-gray-500">No pending requests</p>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Share the QR code to get requests!
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
+            {/* Incoming Requests */}
+            {pendingRequests.length > 0 && (
+              <section className="flex flex-col gap-3">
+                <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-accent">
+                  <Clock className="h-3.5 w-3.5" />
+                  Incoming ({pendingRequests.length})
+                </h2>
+                <div className="flex flex-col gap-2">
                   {pendingRequests.map((request) => (
                     <div
                       key={request.id}
-                      className="bg-gray-900 rounded-lg p-4"
+                      className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-accent/20"
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <p className="font-semibold">{request.song_title}</p>
-                          {request.song_artist && (
-                            <p className="text-gray-400 text-sm">{request.song_artist}</p>
-                          )}
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                          <Disc3 className="h-5 w-5 text-muted-foreground" />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`${TIER_COLORS[request.tier]} px-2 py-0.5 rounded text-xs font-semibold`}>
-                            {TIER_LABELS[request.tier]}
+                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {request.song_title}
                           </span>
-                          <span className="text-green-400 font-semibold">
-                            €{(request.amount / 100).toFixed(0)}
+                          <span className="text-xs text-muted-foreground truncate">
+                            {request.song_artist}
                           </span>
                         </div>
+                        <span className="font-mono font-bold text-accent shrink-0">
+                          €{(request.amount / 100).toFixed(0)}
+                        </span>
                       </div>
 
                       {request.message && (
-                        <p className="text-gray-400 text-sm mb-3 italic">"{request.message}"</p>
+                        <p className="text-xs text-muted-foreground italic pl-[52px]">"{request.message}"</p>
                       )}
 
-                      {/* Expiry warning for old requests */}
+                      {/* Expiry warning */}
                       {(() => {
                         const ageMs = Date.now() - new Date(request.created_at).getTime()
                         const ageDays = ageMs / (1000 * 60 * 60 * 24)
                         if (ageDays > 5) {
                           return (
-                            <div className="bg-orange-900/50 border border-orange-600 rounded p-2 mb-3">
-                              <p className="text-orange-300 text-xs">
+                            <div className="rounded-lg bg-accent/10 border border-accent/30 p-2">
+                              <p className="text-xs text-accent">
                                 Authorization expires soon. Play or skip this request.
                               </p>
                             </div>
@@ -890,63 +884,110 @@ export default function DJDashboardPage() {
                         return null
                       })()}
 
-                      <div className="flex gap-2">
-                        {request.status === 'pending' && (
-                          <>
-                            <button
-                              onClick={() => handleRequestAction(request.id, 'accepted')}
-                              className="flex-1 py-2 bg-green-600 hover:bg-green-700 rounded font-semibold text-sm transition"
-                            >
-                              Accept
-                            </button>
-                            <button
-                              onClick={() => handleRequestAction(request.id, 'rejected')}
-                              className="py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded font-semibold text-sm transition"
-                            >
-                              Skip
-                            </button>
-                          </>
-                        )}
-                        {request.status === 'accepted' && (
-                          <button
-                            onClick={() => handleRequestAction(request.id, 'played')}
-                            className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold text-sm transition"
-                          >
-                            Mark as Played & Charge
-                          </button>
-                        )}
+                      <div className="flex gap-2 pl-[52px]">
+                        <button
+                          onClick={() => handleRequestAction(request.id, 'rejected')}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20"
+                          type="button"
+                          aria-label="Reject request"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleRequestAction(request.id, 'accepted')}
+                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors hover:bg-primary/20"
+                          type="button"
+                          aria-label="Accept request"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </section>
+            )}
+
+            {/* Accepted Queue */}
+            {acceptedRequests.length > 0 && (
+              <section className="flex flex-col gap-3">
+                <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-primary">
+                  <Play className="h-3.5 w-3.5" />
+                  Queue ({acceptedRequests.length})
+                </h2>
+                <div className="flex flex-col gap-2">
+                  {acceptedRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="flex items-center gap-3 rounded-xl bg-card p-4"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                        <Disc3 className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="text-sm font-medium text-foreground truncate">
+                          {request.song_title}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {request.song_artist} · €{(request.amount / 100).toFixed(0)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleRequestAction(request.id, 'played')}
+                        className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 shrink-0"
+                        type="button"
+                      >
+                        <DollarSign className="h-3 w-3" />
+                        Mark Played
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Empty state when no requests */}
+            {pendingRequests.length === 0 && acceptedRequests.length === 0 && (
+              <div className="flex flex-col items-center gap-3 py-12 text-center">
+                <Disc3 className="h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  No requests right now. Keep the vibes going!
+                </p>
+              </div>
+            )}
 
             {/* Played Requests */}
             {playedRequests.length > 0 && (
-              <div className="mt-8 space-y-4">
-                <h2 className="text-lg font-semibold text-gray-400">Played</h2>
-                <div className="space-y-2">
+              <section className="flex flex-col gap-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Played ({playedRequests.length})
+                </h2>
+                <div className="flex flex-col gap-1">
                   {playedRequests.map((request) => (
                     <div
                       key={request.id}
-                      className="bg-gray-900/50 rounded-lg p-3 flex justify-between items-center"
+                      className="flex items-center gap-3 rounded-lg p-3"
                     >
-                      <div>
-                        <p className="text-gray-400">{request.song_title}</p>
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                        <Check className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="text-sm text-muted-foreground truncate">{request.song_title}</span>
                         {request.song_artist && (
-                          <p className="text-gray-500 text-sm">{request.song_artist}</p>
+                          <span className="text-xs text-muted-foreground/60 truncate">{request.song_artist}</span>
                         )}
                       </div>
-                      <span className="text-purple-400 text-sm">✅ Played</span>
+                      <span className="text-xs font-mono text-primary shrink-0">
+                        €{(request.amount / 100).toFixed(0)}
+                      </span>
                     </div>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
-          </>
+          </div>
         )}
-      </main>
+      </div>
     </div>
   )
 }
