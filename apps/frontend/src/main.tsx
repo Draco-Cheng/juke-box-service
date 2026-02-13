@@ -5,6 +5,7 @@ import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastProvider } from './components/Toast'
 import { AuthProvider } from './contexts/AuthContext'
+import { ReloadPrompt } from './components/ReloadPrompt'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -15,6 +16,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <BrowserRouter>
             <App />
           </BrowserRouter>
+          <ReloadPrompt />
         </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>

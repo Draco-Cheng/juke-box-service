@@ -6,14 +6,21 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      devOptions: {
+        enabled: false
+      },
+      workbox: {
+        skipWaiting: false,
+        clientsClaim: true,
+      },
       manifest: {
-        name: 'DJ Request',
-        short_name: 'DJ Request',
-        description: 'Pay to request songs from DJs',
-        theme_color: '#000000',
-        background_color: '#000000',
+        name: 'DropBeat',
+        short_name: 'DropBeat',
+        description: 'Request songs from live DJs',
+        theme_color: '#0d0f14',
+        background_color: '#0d0f14',
         display: 'standalone',
         icons: [
           {
