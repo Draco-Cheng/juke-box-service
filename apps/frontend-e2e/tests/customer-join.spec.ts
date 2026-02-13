@@ -19,7 +19,7 @@ test.describe('Customer Join Page', () => {
   });
 });
 
-test.describe('Customer Join Page with Mock Data', () => {
+test.describe('Customer Join Page with Mock Data (no active session)', () => {
   test.beforeEach(async ({ page }) => {
     // Mock API responses for venue
     await page.route('**/api/venues/test-club', async (route) => {
@@ -57,21 +57,29 @@ test.describe('Customer Join Page with Mock Data', () => {
         body: 'null',
       });
     });
+
+    // Mock Stripe config (loaded on mount)
+    await page.route('**/api/payments/config', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ publishable_key: 'pk_test_xxx' }),
+      });
+    });
   });
 
-  test('should display venue name when no active session', async ({ page }) => {
+  test('should display no active session message when no session', async ({
+    page,
+  }) => {
     await page.goto('/join/test-club');
 
-    // Wait for loading to finish
-    await expect(page.getByText('Loading...')).not.toBeVisible({ timeout: 10000 });
+    // Should show no active session message
+    await expect(
+      page.getByText('No active session at this venue.')
+    ).toBeVisible({ timeout: 10000 });
 
-    // Check venue name is displayed
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Test Club');
-
-    // Check no active session message
-    await expect(page.getByText('No active session')).toBeVisible();
-    await expect(page.getByText('No active DJ session at this venue')).toBeVisible();
-    await expect(page.getByText('Check back later!')).toBeVisible();
+    // Should show "Go back" link
+    await expect(page.getByText('Go back')).toBeVisible();
   });
 });
 
@@ -121,116 +129,189 @@ test.describe('Customer Join Page with Active Session', () => {
       });
     });
 
-    // Mock session requests
-    await page.route('**/api/requests/session/session-123', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          {
-            id: 'req-1',
-            session_id: 'session-123',
-            song_title: 'Test Song',
-            song_artist: 'Test Artist',
-            tier: 'normal',
-            status: 'pending',
-            amount: 200,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ]),
-      });
-    });
-
     // Mock Stripe config
     await page.route('**/api/payments/config', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          publishable_key: 'pk_test_xxx',
-        }),
+        body: JSON.stringify({ publishable_key: 'pk_test_xxx' }),
+      });
+    });
+
+    // Mock Spotify search
+    await page.route('**/api/spotify/search*', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([
+          {
+            id: 'track-1',
+            name: 'Test Song',
+            artists: ['Test Artist'],
+            album: 'Test Album',
+            image_url: null,
+            duration_ms: 200000,
+            explicit: false,
+          },
+        ]),
       });
     });
   });
 
-  test('should display active session with request form', async ({ page }) => {
+  test('should display step 1: Choose a Song with search UI', async ({
+    page,
+  }) => {
     await page.goto('/join/active-club');
 
-    // Wait for loading to finish
-    await expect(page.getByText('Loading...')).not.toBeVisible({ timeout: 10000 });
+    // Wait for page to load
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Choose a Song',
+      { timeout: 10000 }
+    );
 
-    // Check venue name and session status
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Active Club');
-    await expect(page.getByText('Session active')).toBeVisible();
+    // Search mode UI
+    await expect(page.getByText('Search for a song')).toBeVisible();
+    await expect(
+      page.getByPlaceholder('Search songs or artists...')
+    ).toBeVisible();
+    await expect(page.getByText('Enter manually')).toBeVisible();
 
-    // Check request form is visible
-    await expect(page.getByRole('heading', { name: 'Request a Song' })).toBeVisible();
-
-    // Check tier buttons
-    await expect(page.getByRole('button', { name: /Normal €2/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Priority €5/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /ASAP €10/i })).toBeVisible();
-
-    // Check message textarea
-    await expect(page.getByPlaceholder(/Message to DJ/i)).toBeVisible();
-
-    // Check submit button
-    await expect(page.getByRole('button', { name: /Authorize €2 & Submit/i })).toBeVisible();
+    // Continue button should NOT be visible (no song selected)
+    await expect(page.getByText('Continue to Offer')).not.toBeVisible();
   });
 
-  test('should display request queue', async ({ page }) => {
+  test('should allow switching to manual entry mode', async ({ page }) => {
     await page.goto('/join/active-club');
 
-    // Wait for loading to finish
-    await expect(page.getByText('Loading...')).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Choose a Song',
+      { timeout: 10000 }
+    );
 
-    // Check queue section
-    await expect(page.getByRole('heading', { name: /Queue/i })).toBeVisible();
+    // Switch to manual mode
+    await page.getByText('Enter manually').click();
 
-    // Check queue item
-    await expect(page.getByText('Test Song')).toBeVisible();
+    // Manual mode UI
+    await expect(page.getByText('Manual Entry')).toBeVisible();
+    await expect(page.getByPlaceholder('Song title *')).toBeVisible();
+    await expect(page.getByPlaceholder('Artist (optional)')).toBeVisible();
+    await expect(page.getByText('Search Spotify instead')).toBeVisible();
+  });
+
+  test('should show Continue button after entering song manually', async ({
+    page,
+  }) => {
+    await page.goto('/join/active-club');
+
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Choose a Song',
+      { timeout: 10000 }
+    );
+
+    // Switch to manual and enter a title
+    await page.getByText('Enter manually').click();
+    await page.getByPlaceholder('Song title *').fill('My Song');
+
+    // Continue button and message field should now appear
+    await expect(page.getByText('Continue to Offer')).toBeVisible();
+    await expect(
+      page.getByPlaceholder('Message to DJ (optional)')
+    ).toBeVisible();
+  });
+
+  test('should search Spotify and select a track', async ({ page }) => {
+    await page.goto('/join/active-club');
+
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Choose a Song',
+      { timeout: 10000 }
+    );
+
+    // Type in search
+    await page.getByPlaceholder('Search songs or artists...').fill('Test');
+
+    // Wait for search results
+    await expect(page.getByText('Test Song')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Test Artist')).toBeVisible();
+
+    // Select the track
+    await page.getByText('Test Song').click();
+
+    // Should show selected state
+    await expect(page.getByText('Selected Song')).toBeVisible();
+    await expect(page.getByText('Continue to Offer')).toBeVisible();
   });
 
-  test('should allow tier selection', async ({ page }) => {
+  test('should navigate to step 2: Make Your Offer', async ({ page }) => {
     await page.goto('/join/active-club');
 
-    // Wait for loading to finish
-    await expect(page.getByText('Loading...')).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Choose a Song',
+      { timeout: 10000 }
+    );
 
-    // Default is normal tier
-    const normalButton = page.getByRole('button', { name: /Normal €2/i });
-    const priorityButton = page.getByRole('button', { name: /Priority €5/i });
-    const asapButton = page.getByRole('button', { name: /ASAP €10/i });
+    // Enter song manually and continue
+    await page.getByText('Enter manually').click();
+    await page.getByPlaceholder('Song title *').fill('My Song');
+    await page.getByPlaceholder('Artist (optional)').fill('My Artist');
+    await page.getByText('Continue to Offer').click();
 
-    // Click priority
-    await priorityButton.click();
+    // Step 2 UI
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Make Your Offer'
+    );
 
-    // Submit button should update price
-    await expect(page.getByRole('button', { name: /Authorize €5 & Submit/i })).toBeVisible();
+    // Song summary
+    await expect(page.getByText('My Song')).toBeVisible();
+    await expect(page.getByText('My Artist')).toBeVisible();
 
-    // Click ASAP
-    await asapButton.click();
+    // Offer display
+    await expect(page.getByText('Your offer')).toBeVisible();
 
-    // Submit button should update price
-    await expect(page.getByRole('button', { name: /Authorize €10 & Submit/i })).toBeVisible();
+    // Quick amount buttons (default min is €2)
+    await expect(page.getByRole('button', { name: '€5' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '€10' })).toBeVisible();
 
-    // Click normal
-    await normalButton.click();
+    // Trust signal
+    await expect(
+      page.getByText('You are only charged if your song is played')
+    ).toBeVisible();
 
-    // Submit button should update price
-    await expect(page.getByRole('button', { name: /Authorize €2 & Submit/i })).toBeVisible();
+    // Submit CTA
+    await expect(page.getByText(/Send Request/)).toBeVisible();
   });
 
-  test('submit button should be disabled without song selection', async ({ page }) => {
+  test('should update offer amount via quick buttons', async ({ page }) => {
     await page.goto('/join/active-club');
 
-    // Wait for loading to finish
-    await expect(page.getByText('Loading...')).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Choose a Song',
+      { timeout: 10000 }
+    );
 
-    // Submit button should be disabled
-    const submitButton = page.getByRole('button', { name: /Authorize €2 & Submit/i });
-    await expect(submitButton).toBeDisabled();
+    // Navigate to offer step
+    await page.getByText('Enter manually').click();
+    await page.getByPlaceholder('Song title *').fill('My Song');
+    await page.getByText('Continue to Offer').click();
+
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Make Your Offer'
+    );
+
+    // Click €10 button
+    await page.getByRole('button', { name: '€10' }).click();
+
+    // Submit button should show €10
+    await expect(
+      page.getByRole('button', { name: 'Send Request — €10' })
+    ).toBeVisible();
+
+    // Click €20 button
+    await page.getByRole('button', { name: '€20' }).click();
+
+    // Submit button should show €20
+    await expect(
+      page.getByRole('button', { name: 'Send Request — €20' })
+    ).toBeVisible();
   });
 });
