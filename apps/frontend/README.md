@@ -40,18 +40,17 @@ App available at http://localhost:3000
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_API_URL` | Backend API base URL |
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `NEXT_PUBLIC_API_URL` | Backend API base URL |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
 
 Runtime injection via `docker-entrypoint.sh` → `env-config.js` for Docker deployments.
 
 ## Tech
 
-- **Framework**: Vite + React 18
+- **Framework**: Next.js 15 (App Router) + React 19
 - **Styling**: TailwindCSS
-- **PWA**: vite-plugin-pwa
-- **Routing**: react-router-dom
+- **Routing**: Next.js App Router
 - **Payments**: Stripe Elements
 - **Real-time**: Supabase Realtime

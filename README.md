@@ -134,10 +134,10 @@ npx nx serve backend
 ### Frontend (`apps/frontend/.env`)
 
 ```bash
-VITE_API_URL=http://localhost:8000/api
-VITE_SUPABASE_URL=http://localhost:54321
-VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+NEXT_PUBLIC_API_URL=/api
+NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 ```
 
 ### Backend (`apps/backend/.env`)
@@ -181,9 +181,9 @@ Revenue split: DJ 50% / Venue 25% / Platform 25%
 | `K8S_CA_DATA` | Kubernetes CA certificate (base64) |
 | `K8S_CLIENT_CERT` | Kubernetes client certificate (base64) |
 | `K8S_CLIENT_KEY` | Kubernetes client key (base64) |
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
 | `K8S_NAMESPACE` | Kubernetes namespace (default: `juke-box-service`) |
 | `INGRESS_HOST` | Domain for ingress routing |
 

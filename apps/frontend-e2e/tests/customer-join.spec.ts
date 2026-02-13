@@ -269,8 +269,12 @@ test.describe('Customer Join Page with Active Session', () => {
     await expect(page.getByText('Your offer', { exact: true })).toBeVisible();
 
     // Quick amount buttons (default min is €2)
-    await expect(page.getByRole('button', { name: '€5' })).toBeVisible();
-    await expect(page.getByRole('button', { name: '€10' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '€5', exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: '€10', exact: true })
+    ).toBeVisible();
 
     // Trust signal
     await expect(
