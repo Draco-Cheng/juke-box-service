@@ -39,6 +39,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${spaceMono.variable}`}>
+      <head>
+        <script src="/env-config.js" />
+      </head>
       <body>
         <Providers>
           <OfflineBanner />
