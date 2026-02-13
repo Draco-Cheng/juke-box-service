@@ -131,17 +131,24 @@ test.describe('DJ Login Page', () => {
     // Switch to magic link mode
     await page.getByRole('button', { name: 'Magic Link' }).click();
 
-    // Fill email and submit
+    // Fill email using pressSequentially for reliable React state updates
     const emailInput = page.getByLabel('Email');
     await emailInput.click();
     await emailInput.pressSequentially('test@dj.com');
-    await page.getByRole('button', { name: 'Send Magic Link' }).click();
 
-    // Should show either the confirmation or an error
-    // "Check your email!" when Supabase is configured,
-    // "Supabase not configured" or other error when it's not
+    // Verify the input value was set and button is enabled
+    await expect(emailInput).toHaveValue('test@dj.com', { timeout: 3000 });
+    const sendButton = page.getByRole('button', { name: 'Send Magic Link' });
+    await expect(sendButton).toBeEnabled({ timeout: 5000 });
+
+    // Submit the form
+    await sendButton.click();
+
+    // Should show either:
+    // - "Check your email!" confirmation when Supabase is configured and OTP sent
+    // - "Supabase not configured" error when Supabase client is null
     await expect(
-      page.getByText(/Check your email!|not configured|error|unavailable|failed/i)
+      page.getByText(/Check your email|Supabase not configured/i)
     ).toBeVisible({ timeout: 10000 });
   });
 });
