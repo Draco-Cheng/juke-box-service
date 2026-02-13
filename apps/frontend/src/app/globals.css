@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 230 15% 5%;
+    --foreground: 0 0% 93%;
+    --card: 230 12% 8%;
+    --card-foreground: 0 0% 93%;
+    --popover: 230 12% 8%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 160 84% 39%;
+    --primary-foreground: 160 84% 4%;
+    --secondary: 230 8% 14%;
+    --secondary-foreground: 0 0% 85%;
+    --muted: 230 8% 14%;
+    --muted-foreground: 0 0% 50%;
+    --accent: 38 100% 56%;
+    --accent-foreground: 38 100% 8%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 230 8% 18%;
+    --input: 230 8% 18%;
+    --ring: 160 84% 39%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+}
+
+/* Custom animations */
+@keyframes pulse-live {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.5);
+  }
+}
+
+.animate-pulse-live {
+  animation: pulse-live 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes progress-pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-progress-pulse {
+  animation: progress-pulse 1.5s ease-in-out infinite;
+}

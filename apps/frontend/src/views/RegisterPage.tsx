@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function RegisterPage() {
@@ -67,7 +69,7 @@ export default function RegisterPage() {
               Click the link to activate your account.
             </p>
           </div>
-          <Link to="/dj" className="text-purple-400 hover:text-purple-300">
+          <Link href="/dj" className="text-purple-400 hover:text-purple-300">
             Back to Login
           </Link>
         </div>
@@ -160,7 +162,7 @@ export default function RegisterPage() {
 
         <p className="text-gray-500 text-sm text-center mt-6">
           Already have an account?{' '}
-          <Link to="/dj" className="text-purple-400 hover:text-purple-300">
+          <Link href="/dj" className="text-purple-400 hover:text-purple-300">
             Login
           </Link>
         </p>

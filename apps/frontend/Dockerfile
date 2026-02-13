@@ -1,11 +1,13 @@
-# Frontend Dockerfile for Vite + React
+# Frontend Dockerfile for Next.js
 # syntax=docker/dockerfile:1
 FROM node:20-alpine AS base
 WORKDIR /app
 
 # Install dependencies first (for better caching)
 COPY package.json ./
-RUN npm install
+# Copy root lockfile if available (Nx monorepo keeps it at repo root)
+COPY package-lock.json* ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy the rest of the source code
 COPY . .
@@ -13,17 +15,21 @@ COPY . .
 # Development stage (for docker-compose)
 FROM base AS development
 EXPOSE 3000
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["npm", "run", "dev"]
 
 # Build stage
 FROM base AS build
 RUN npm run build
 
-# Production stage - serve with nginx
-FROM nginx:alpine AS production
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
-EXPOSE 80
-CMD ["/docker-entrypoint.sh"]
+# Production stage - Next.js standalone server
+FROM node:20-alpine AS production
+WORKDIR /app
+
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
+
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
+CMD ["node", "server.js"]

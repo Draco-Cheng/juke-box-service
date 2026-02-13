@@ -53,14 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state
   useEffect(() => {
-    if (!supabase) {
+    if (!supabase.client) {
       setState(prev => ({ ...prev, loading: false }))
       return
     }
 
     let activeRequestId = 0
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.client.auth.onAuthStateChange(async (_event, session) => {
       const requestId = ++activeRequestId
 
       if (session?.user) {
@@ -98,12 +98,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signUp = async (email: string, password: string, djName: string): Promise<{ error: AuthError | Error | null }> => {
-    if (!supabase) {
+    if (!supabase.client) {
       return { error: new Error('Supabase not configured') }
     }
 
     // 1. Create Supabase auth user
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.client.auth.signUp({
       email,
       password,
     })
@@ -129,11 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn = async (email: string, password: string): Promise<{ error: AuthError | Error | null }> => {
-    if (!supabase) {
+    if (!supabase.client) {
       return { error: new Error('Supabase not configured') }
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.client.auth.signInWithPassword({
       email,
       password,
     })
@@ -157,11 +157,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signInWithMagicLink = async (email: string): Promise<{ error: AuthError | null }> => {
-    if (!supabase) {
+    if (!supabase.client) {
       return { error: { message: 'Supabase not configured' } as AuthError }
     }
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.client.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: `${window.location.origin}/dj/dashboard`,
@@ -172,11 +172,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
-    if (!supabase) return
+    if (!supabase.client) return
 
     // Use scope: 'local' to avoid server-side revoke failures blocking logout
     try {
-      await supabase.auth.signOut({ scope: 'local' })
+      await supabase.client.auth.signOut({ scope: 'local' })
     } catch {
       // Even if signOut fails, clear local state
     }

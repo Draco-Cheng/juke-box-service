@@ -1,11 +1,14 @@
+'use client'
+
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useAuth } from '../../contexts/AuthContext'
 
 type LoginMode = 'password' | 'magic-link'
 
 export default function DJLoginPage() {
-  const navigate = useNavigate()
+  const router = useRouter()
   const { signIn, signInWithMagicLink } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,7 +40,7 @@ export default function DJLoginPage() {
     }
 
     setLoading(false)
-    navigate('/dj/dashboard')
+    router.push('/dj/dashboard')
   }
 
   const handleMagicLink = async (e: React.FormEvent) => {
@@ -48,7 +51,12 @@ export default function DJLoginPage() {
     const { error: magicLinkError } = await signInWithMagicLink(email.trim())
 
     if (magicLinkError) {
-      setError(magicLinkError.message)
+      const msg = magicLinkError.message.toLowerCase()
+      if (msg.includes('not configured') || msg.includes('unavailable')) {
+        setError('Authentication service unavailable')
+      } else {
+        setError('Unable to send magic link. Please try again.')
+      }
       setLoading(false)
       return
     }
@@ -170,13 +178,13 @@ export default function DJLoginPage() {
 
         <p className="text-gray-500 text-sm text-center mt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="text-purple-400 hover:text-purple-300">
+          <Link href="/register" className="text-purple-400 hover:text-purple-300">
             Register
           </Link>
         </p>
 
         <Link
-          to="/"
+          href="/"
           className="block text-gray-500 hover:text-gray-300 text-sm text-center mt-4 transition"
         >
           &larr; Back to DropBeat
