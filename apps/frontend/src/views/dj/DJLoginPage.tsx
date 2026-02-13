@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '../../contexts/AuthContext'
@@ -9,7 +9,15 @@ type LoginMode = 'password' | 'magic-link'
 
 export default function DJLoginPage() {
   const router = useRouter()
-  const { signIn, signInWithMagicLink } = useAuth()
+  const { signIn, signInWithMagicLink, user, loading: authLoading } = useAuth()
+
+  // If already logged in, redirect to dashboard
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/dj/dashboard')
+    }
+  }, [authLoading, user, router])
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mode, setMode] = useState<LoginMode>('password')
@@ -63,6 +71,15 @@ export default function DJLoginPage() {
 
     setMagicLinkSent(true)
     setLoading(false)
+  }
+
+  // Show nothing while checking auth (prevents login form flash)
+  if (authLoading || user) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="animate-pulse text-gray-400">Loading...</div>
+      </div>
+    )
   }
 
   if (magicLinkSent) {
