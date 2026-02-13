@@ -143,6 +143,9 @@ export default function DJDashboardPage() {
   const handleRequestAction = async (requestId: string, status: Request['status']) => {
     try {
       await api.updateRequest(requestId, status)
+      // Always refetch after action — don't rely solely on Realtime
+      // (Realtime may also fire, but refetch ensures immediate UI update)
+      await refetchRequests()
     } catch (error) {
       console.error('Failed to update request:', error)
       refetchRequests()
