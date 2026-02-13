@@ -255,7 +255,7 @@ This document outlines the step-by-step implementation plan for building the Dro
 - [ ] Configure GitHub Secrets:
   - `DOCKER_USERNAME`, `DOCKER_PASSWORD`
   - `K8S_SERVER`, `K8S_CA_DATA`, `K8S_CLIENT_CERT`, `K8S_CLIENT_KEY`
-  - `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY`
+  - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - [ ] Create Kubernetes Secrets for backend environment variables
 
 ---
@@ -338,7 +338,7 @@ This document outlines the step-by-step implementation plan for building the Dro
 ### 8.4 Design System Updates ✅
 - [x] Fonts: Inter (UI) + Space Mono (prices/monospace)
 - [x] HTML meta: title, description, theme-color updated to DropBeat
-- [x] Frontend env: `VITE_STRIPE_PUBLISHABLE_KEY` added to `docker-entrypoint.sh`
+- [x] Frontend env: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` added to `docker-entrypoint.sh`
 
 ### 8.5 Documentation Updates ✅
 - [x] `apps/backend/README.md` — full endpoint listing (31 endpoints)
