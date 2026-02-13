@@ -48,12 +48,16 @@ test.describe('DJ Login Page', () => {
     await expect(loginButton).toBeDisabled();
 
     // Fill only email — still disabled
-    await page.getByLabel('Email').fill('test@test.com');
+    const emailInput = page.getByLabel('Email');
+    await emailInput.click();
+    await emailInput.pressSequentially('test@test.com');
     await expect(loginButton).toBeDisabled();
 
     // Fill password too — should be enabled
-    await page.getByLabel('Password').fill('password123');
-    await expect(loginButton).toBeEnabled({ timeout: 3000 });
+    const passwordInput = page.getByLabel('Password');
+    await passwordInput.click();
+    await passwordInput.pressSequentially('password123');
+    await expect(loginButton).toBeEnabled({ timeout: 5000 });
   });
 
   test('should switch to magic link mode', async ({ page }) => {
@@ -75,14 +79,21 @@ test.describe('DJ Login Page', () => {
   });
 
   test('should show error when login fails', async ({ page }) => {
-    // Fill in credentials and submit
-    await page.getByLabel('Email').fill('nonexistent@test.com');
-    await page.getByLabel('Password').fill('wrongpassword');
-    await page.getByRole('button', { name: 'Login' }).click();
+    // Fill in credentials using pressSequentially for webkit compatibility
+    const emailInput = page.getByLabel('Email');
+    await emailInput.click();
+    await emailInput.pressSequentially('nonexistent@test.com');
+
+    const passwordInput = page.getByLabel('Password');
+    await passwordInput.click();
+    await passwordInput.pressSequentially('wrongpassword');
+
+    // Wait for button to be enabled before clicking
+    const loginButton = page.getByRole('button', { name: 'Login' });
+    await expect(loginButton).toBeEnabled({ timeout: 5000 });
+    await loginButton.click();
 
     // Should show an error message (exact text depends on Supabase availability)
-    // "Invalid email or password" when Supabase is configured,
-    // "Authentication service unavailable" when it's not
     await expect(
       page.getByText(
         /Invalid email or password|Authentication service unavailable/
@@ -91,15 +102,21 @@ test.describe('DJ Login Page', () => {
   });
 
   test('should show loading state when logging in', async ({ page }) => {
-    // Fill in credentials
-    await page.getByLabel('Email').fill('test@test.com');
-    await page.getByLabel('Password').fill('testpassword');
+    // Fill in credentials using pressSequentially for webkit compatibility
+    const emailInput = page.getByLabel('Email');
+    await emailInput.click();
+    await emailInput.pressSequentially('test@test.com');
 
-    // Submit form
-    await page.getByRole('button', { name: 'Login' }).click();
+    const passwordInput = page.getByLabel('Password');
+    await passwordInput.click();
+    await passwordInput.pressSequentially('testpassword');
+
+    // Wait for button to be enabled before clicking
+    const loginButton = page.getByRole('button', { name: 'Login' });
+    await expect(loginButton).toBeEnabled({ timeout: 5000 });
+    await loginButton.click();
 
     // Should show either loading text or an error (if Supabase responds immediately)
-    // This verifies the form submission happens without crashing
     await expect(
       page.getByText(
         /Logging in|Invalid email or password|Authentication service unavailable/
@@ -115,14 +132,16 @@ test.describe('DJ Login Page', () => {
     await page.getByRole('button', { name: 'Magic Link' }).click();
 
     // Fill email and submit
-    await page.getByLabel('Email').fill('test@dj.com');
+    const emailInput = page.getByLabel('Email');
+    await emailInput.click();
+    await emailInput.pressSequentially('test@dj.com');
     await page.getByRole('button', { name: 'Send Magic Link' }).click();
 
     // Should show either the confirmation or an error
     // "Check your email!" when Supabase is configured,
-    // an error message otherwise
+    // "Supabase not configured" or other error when it's not
     await expect(
-      page.getByText(/Check your email!|error|unavailable|failed/i)
+      page.getByText(/Check your email!|not configured|error|unavailable|failed/i)
     ).toBeVisible({ timeout: 10000 });
   });
 });
