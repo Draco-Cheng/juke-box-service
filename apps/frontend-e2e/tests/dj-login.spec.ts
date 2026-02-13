@@ -146,9 +146,9 @@ test.describe('DJ Login Page', () => {
 
     // Should show either:
     // - "Check your email!" confirmation when Supabase is configured and OTP sent
-    // - "Supabase not configured" error when Supabase client is null
+    // - Error message when Supabase is unavailable or OTP fails
     await expect(
-      page.getByText(/Check your email|Supabase not configured/i)
+      page.getByText(/Check your email|Authentication service unavailable|Unable to send magic link/i)
     ).toBeVisible({ timeout: 10000 });
   });
 });

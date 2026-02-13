@@ -51,7 +51,12 @@ export default function DJLoginPage() {
     const { error: magicLinkError } = await signInWithMagicLink(email.trim())
 
     if (magicLinkError) {
-      setError(magicLinkError.message)
+      const msg = magicLinkError.message.toLowerCase()
+      if (msg.includes('not configured') || msg.includes('unavailable')) {
+        setError('Authentication service unavailable')
+      } else {
+        setError('Unable to send magic link. Please try again.')
+      }
       setLoading(false)
       return
     }
