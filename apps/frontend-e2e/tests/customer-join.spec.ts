@@ -266,7 +266,7 @@ test.describe('Customer Join Page with Active Session', () => {
     await expect(page.getByText('My Artist')).toBeVisible();
 
     // Offer display
-    await expect(page.getByText('Your offer')).toBeVisible();
+    await expect(page.getByText('Your offer', { exact: true })).toBeVisible();
 
     // Quick amount buttons (default min is €2)
     await expect(page.getByRole('button', { name: '€5' })).toBeVisible();
