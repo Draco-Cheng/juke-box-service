@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { RealtimeChannel } from '@supabase/supabase-js'
-import { supabase, isRealtimeEnabled } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { Request as SongRequest, api } from '../lib/api'
 
 interface UseMyRequestStatusOptions {
@@ -61,14 +61,14 @@ export function useMyRequestStatus({
     fetchRequest()
 
     // Skip realtime if not enabled - fallback to polling
-    if (!isRealtimeEnabled || !supabase) {
+    if (!supabase.isRealtimeEnabled || !supabase.client) {
       console.log('[Realtime] Not available for request status, falling back to polling')
       const interval = setInterval(fetchRequest, 30000)
       return () => clearInterval(interval)
     }
 
     // Create realtime channel for this specific request
-    const channel = supabase
+    const channel = supabase.client
       .channel(`request:${requestId}`)
       .on(
         'postgres_changes',
@@ -96,8 +96,8 @@ export function useMyRequestStatus({
     channelRef.current = channel
 
     return () => {
-      if (channelRef.current && supabase) {
-        supabase.removeChannel(channelRef.current)
+      if (channelRef.current && supabase.client) {
+        supabase.client.removeChannel(channelRef.current)
         channelRef.current = null
       }
     }
@@ -107,7 +107,7 @@ export function useMyRequestStatus({
     request,
     loading,
     error,
-    isRealtime: isRealtimeEnabled,
+    isRealtime: supabase.isRealtimeEnabled,
     refetch: fetchRequest,
   }
 }

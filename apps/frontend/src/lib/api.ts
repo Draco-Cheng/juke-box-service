@@ -8,8 +8,8 @@ const API_BASE = env.API_URL
  * Get the current auth token from Supabase
  */
 async function getAuthToken(): Promise<string | null> {
-  if (!supabase) return null
-  const { data } = await supabase.auth.getSession()
+  if (!supabase.client) return null
+  const { data } = await supabase.client.auth.getSession()
   return data.session?.access_token ?? null
 }
 
@@ -55,7 +55,7 @@ async function request<T>(
   if (!res.ok) {
     // Session expired - force sign out so user returns to login
     if (res.status === 401 && shouldAuth) {
-      await supabase?.auth.signOut()
+      await supabase.client?.auth.signOut()
     }
     const errorData = await res.json().catch(() => ({ detail: 'Request failed' }))
     const message = errorData.detail || 'Request failed'
