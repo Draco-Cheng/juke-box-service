@@ -94,6 +94,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
+    // Safety net: explicitly check for existing session in case onAuthStateChange
+    // INITIAL_SESSION event doesn't fire reliably (known issue with some Supabase versions)
+    const currentRequestId = activeRequestId
+    supabase.client.auth.getSession().then(({ data: { session } }) => {
+      if (currentRequestId !== activeRequestId) return // stale
+      if (session?.user) {
+        loadDJProfile(session.user, session.access_token).then(dj => {
+          if (currentRequestId !== activeRequestId) return
+          setState(prev => {
+            // Only update if still loading (onAuthStateChange hasn't resolved yet)
+            if (prev.loading) {
+              return { user: session.user, session, dj, loading: false }
+            }
+            return prev
+          })
+        })
+      } else {
+        setState(prev => prev.loading ? { ...prev, loading: false } : prev)
+      }
+    })
+
     return () => subscription.unsubscribe()
   }, [])
 

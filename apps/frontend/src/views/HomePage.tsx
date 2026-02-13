@@ -1,22 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Music, Radio, Star, Users, Disc3, Clock, CheckCircle2, XCircle, Ban, ChevronDown, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api, LiveDJ, Request as SongRequest } from '../lib/api'
-
-// LocalStorage key (shared with JoinPage)
-const MY_REQUESTS_KEY = 'my_requests'
-
-function getMyRequestIds(): string[] {
-  try {
-    const stored = localStorage.getItem(MY_REQUESTS_KEY)
-    return stored ? JSON.parse(stored) : []
-  } catch {
-    return []
-  }
-}
+import { useLiveDJs } from '../hooks/useLiveDJs'
+import { useMyRequestsRealtime } from '../hooks/useMyRequestsRealtime'
 
 // Status configuration for request cards
 const STATUS_CONFIG: Record<
@@ -321,65 +311,24 @@ export default function HomePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const activeTab = (searchParams?.get('tab') || 'djs') as 'djs' | 'requests'
-  const [liveDJs, setLiveDJs] = useState<LiveDJ[]>([])
-  const [loading, setLoading] = useState(true)
-  const [myRequests, setMyRequests] = useState<SongRequest[]>([])
-  const [requestsLoading, setRequestsLoading] = useState(false)
   const [expandedRequestId, setExpandedRequestId] = useState<string | null>(null)
 
-  // Fetch live DJs
-  useEffect(() => {
-    async function fetchLiveDJs() {
-      try {
-        setLoading(true)
-        const data = await api.getLiveDJs()
-        setLiveDJs(data)
-      } catch (err) {
-        console.error('Failed to fetch live DJs:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchLiveDJs()
-  }, [])
+  // Live DJs — polls every 30s + refetches on visibility change
+  const { liveDJs, loading } = useLiveDJs()
 
-  // Fetch my requests when switching to requests tab
-  useEffect(() => {
-    if (activeTab !== 'requests') return
-
-    async function fetchMyRequests() {
-      setRequestsLoading(true)
-      const ids = getMyRequestIds()
-      const results: SongRequest[] = []
-      for (const id of ids) {
-        try {
-          const req = await api.getRequest(id)
-          results.push(req)
-        } catch {
-          // Request may no longer exist
-        }
-      }
-      setMyRequests(results)
-      setRequestsLoading(false)
-
-      // Auto-expand the first (newest) request if navigated from payment success
-      if (results.length > 0 && searchParams?.get('tab') === 'requests') {
-        setExpandedRequestId((prev) => prev ?? results[0].id)
-      }
-    }
-    fetchMyRequests()
-  }, [activeTab, searchParams])
+  // My requests — Supabase Realtime subscriptions with polling fallback
+  const {
+    requests: myRequests,
+    loading: requestsLoading,
+    refetch: refetchMyRequests,
+  } = useMyRequestsRealtime(activeTab === 'requests')
 
   // Cancel/withdraw a request
   async function handleCancelRequest(requestId: string) {
     try {
       await api.updateRequest(requestId, 'rejected')
-      // Update local state to reflect cancellation
-      setMyRequests((prev) =>
-        prev.map((r) =>
-          r.id === requestId ? { ...r, status: 'rejected' as const } : r,
-        ),
-      )
+      // Refetch to get updated state (realtime will also update, but this is immediate)
+      await refetchMyRequests()
     } catch (err) {
       console.error('Failed to cancel request:', err)
     }
