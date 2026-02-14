@@ -1,17 +1,11 @@
 import nextEnv from '@next/env'
 import { fileURLToPath } from 'url'
 import { dirname } from 'path'
-import withSerwistInit from '@serwist/next'
-
 // Nx runs from monorepo root, so process.cwd() != this directory.
 // Explicitly load .env from the frontend app directory.
 nextEnv.loadEnvConfig(dirname(fileURLToPath(import.meta.url)))
 
-const withSerwist = withSerwistInit({
-  swSrc: 'src/sw.ts',
-  swDest: 'public/sw.js',
-  disable: process.env.NODE_ENV === 'development',
-})
+const isDev = process.env.NODE_ENV === 'development'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -27,4 +21,15 @@ const nextConfig = {
   },
 }
 
-export default withSerwist(nextConfig)
+// Skip Serwist entirely in dev — its webpack plugin conflicts with Turbopack
+let finalConfig = nextConfig
+if (!isDev) {
+  const withSerwistInit = (await import('@serwist/next')).default
+  const withSerwist = withSerwistInit({
+    swSrc: 'src/sw.ts',
+    swDest: 'public/sw.js',
+  })
+  finalConfig = withSerwist(nextConfig)
+}
+
+export default finalConfig
