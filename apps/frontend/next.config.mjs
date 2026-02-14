@@ -5,7 +5,10 @@ import { dirname } from 'path'
 // Explicitly load .env from the frontend app directory.
 nextEnv.loadEnvConfig(dirname(fileURLToPath(import.meta.url)))
 
-const isDev = process.env.NODE_ENV === 'development'
+// next dev sets NODE_ENV *after* loading config, so also check process.argv
+const isDev =
+  process.env.NODE_ENV === 'development' ||
+  process.argv.includes('dev')
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
