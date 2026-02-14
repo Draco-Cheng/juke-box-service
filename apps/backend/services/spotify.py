@@ -57,6 +57,11 @@ class SpotifyService:
 
         return self._access_token
 
+    def _invalidate_token(self):
+        """Clear cached token to force refresh on next request"""
+        self._access_token = None
+        self._token_expires_at = 0
+
     async def search_tracks(self, query: str, limit: int = 10) -> list[SpotifyTrack]:
         """Search for tracks on Spotify"""
         if not self.is_configured:
@@ -72,9 +77,21 @@ class SpotifyService:
                     "q": query,
                     "type": "track",
                     "limit": min(limit, 50),
-                    "market": "TW",
                 },
             )
+            # If 401/403, token may be expired/revoked — retry once with fresh token
+            if response.status_code in (401, 403):
+                self._invalidate_token()
+                token = await self._get_access_token()
+                response = await client.get(
+                    f"{self.API_BASE}/search",
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={
+                        "q": query,
+                        "type": "track",
+                        "limit": min(limit, 50),
+                    },
+                )
             response.raise_for_status()
             data = response.json()
 
@@ -107,10 +124,19 @@ class SpotifyService:
             response = await client.get(
                 f"{self.API_BASE}/tracks/{track_id}",
                 headers={"Authorization": f"Bearer {token}"},
-                params={"market": "TW"},
             )
             if response.status_code == 404:
                 return None
+            # If 401/403, retry once with fresh token
+            if response.status_code in (401, 403):
+                self._invalidate_token()
+                token = await self._get_access_token()
+                response = await client.get(
+                    f"{self.API_BASE}/tracks/{track_id}",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                if response.status_code == 404:
+                    return None
             response.raise_for_status()
             item = response.json()
 
