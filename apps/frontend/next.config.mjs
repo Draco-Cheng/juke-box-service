@@ -20,4 +20,16 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+// Serwist's webpack plugin conflicts with Turbopack (next dev --turbopack).
+// Only load it for production builds.
+let finalConfig = nextConfig
+if (process.env.NODE_ENV === 'production') {
+  const withSerwistInit = (await import('@serwist/next')).default
+  const withSerwist = withSerwistInit({
+    swSrc: 'src/sw.ts',
+    swDest: 'public/sw.js',
+  })
+  finalConfig = withSerwist(nextConfig)
+}
+
+export default finalConfig

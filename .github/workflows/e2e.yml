@@ -48,8 +48,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_API_URL: /api
         run: |
-          # Build all services first
-          npx nx build backend frontend
+          # Build backend only — frontend runs in dev mode via Playwright webServer
+          npx nx build backend
 
           # Run all E2E tests (services will be auto-started by Playwright)
           npx nx run-many -t e2e

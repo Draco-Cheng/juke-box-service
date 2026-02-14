@@ -20,9 +20,15 @@ const spaceMono = Space_Mono({
 export const metadata: Metadata = {
   title: 'DropBeat - Request Songs from Live DJs',
   description: 'Request songs from live DJs. Your song, your moment.',
+  manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'DropBeat',
   },
 }
 
