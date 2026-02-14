@@ -7,7 +7,12 @@ export function useServiceWorker() {
   const [showUpdate, setShowUpdate] = useState(false)
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+    if (
+      typeof window === 'undefined' ||
+      !('serviceWorker' in navigator) ||
+      process.env.NODE_ENV === 'development'
+    )
+      return
 
     async function registerSW() {
       const registration = await navigator.serviceWorker.register('/sw.js', {
