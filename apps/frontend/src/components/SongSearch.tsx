@@ -49,10 +49,10 @@ export default function SongSearch({ onSelect, disabled }: SongSearchProps) {
       clearTimeout(searchTimeoutRef.current)
     }
 
-    if (query.trim() && !selectedTrack) {
+    if (query.trim().length >= 2 && !selectedTrack) {
       searchTimeoutRef.current = setTimeout(() => {
         searchTracks(query)
-      }, 300)
+      }, 500)
     } else {
       setResults([])
     }

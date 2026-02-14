@@ -21,6 +21,7 @@ A mobile-first paid song request platform for bars, clubs, and live DJs. Custome
 | Layer | Technology |
 |-------|------------|
 | Frontend | Next.js 15 (App Router) + React 19 + TypeScript + Tailwind CSS |
+| PWA | Serwist (service worker + offline support + install prompt) |
 | UI Components | shadcn/ui (`@/components/ui/*`) |
 | Backend | Python 3.10+ FastAPI |
 | Database | Supabase (PostgreSQL + Auth + Realtime) |
@@ -96,6 +97,24 @@ See [docs/jukebox-app-design/](docs/jukebox-app-design/) for the full UI design 
 - Bottom navigation bar with Listener / DJ mode toggle
 - Listener tabs: DJs, Requests
 - DJ tabs: Dashboard, Go Live, History
+
+---
+
+## PWA
+
+DropBeat is installable as a Progressive Web App. The service worker uses `skipWaiting: false` — new versions wait in the background and a banner prompts the user to update.
+
+| Component | File |
+|-----------|------|
+| Service worker source | `apps/frontend/src/sw.ts` |
+| Serwist config | `apps/frontend/next.config.mjs` (withSerwist wrapper) |
+| Update prompt | `apps/frontend/src/components/ReloadPrompt.tsx` |
+| Web manifest | `apps/frontend/public/manifest.json` |
+| Icons | `apps/frontend/public/icon-{192,512}*.png` |
+
+**Update flow:** New SW installs → banner appears → user clicks "Update" → `postMessage('SKIP_WAITING')` → `controllerchange` fires → page reloads with fresh content.
+
+> The service worker is disabled in development (`NODE_ENV === 'development'`). Test with `npm run build && npm start`.
 
 ---
 

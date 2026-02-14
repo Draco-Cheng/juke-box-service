@@ -48,6 +48,11 @@ Thumbs.db
 next-env.d.ts
 *.tsbuildinfo
 
+# Serwist (generated service worker)
+**/public/sw.js
+**/public/sw.js.map
+**/public/swe-worker*.js
+
 .nx/cache
 .nx/workspace-data
 .cursor/rules/nx-rules.mdc
