@@ -11,7 +11,7 @@
     "@nx/vite": "21.4.0",
     "@nx/web": "21.4.0",
     "@swc-node/register": "~1.9.1",
-    "@swc/core": "~1.5.7",
+    "@swc/core": "^1.15.11",
     "@swc/helpers": "~0.5.11",
     "@types/node": "^20",
     "nx": "21.4.0",
