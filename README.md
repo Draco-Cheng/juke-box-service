@@ -20,8 +20,8 @@ A mobile-first paid song request platform for bars, clubs, and live DJs. Custome
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | React 18 + Vite + TypeScript + Tailwind CSS (PWA) |
-| UI Components | shadcn/ui (planned migration) |
+| Frontend | Next.js 15 (App Router) + React 19 + TypeScript + Tailwind CSS |
+| UI Components | shadcn/ui (`@/components/ui/*`) |
 | Backend | Python 3.10+ FastAPI |
 | Database | Supabase (PostgreSQL + Auth + Realtime) |
 | Payments | Stripe Connect (manual capture) |
@@ -35,7 +35,7 @@ A mobile-first paid song request platform for bars, clubs, and live DJs. Custome
 
 ```
 ├── apps/
-│   ├── frontend/          # React + Vite PWA (Listener + DJ)
+│   ├── frontend/          # Next.js 15 App Router (Listener + DJ)
 │   │   └── helm/          # Frontend Helm chart
 │   ├── frontend-e2e/      # Playwright E2E tests
 │   └── backend/           # Python FastAPI
@@ -122,7 +122,7 @@ npx nx serve backend
 |-----|---------|------|
 | `/` | DJ Discovery (home) | Listener |
 | `/join/:venueSlug` | Song request + payment | Listener |
-| `/dj/:djId` | DJ detail page (planned) | Listener |
+| `/venue/:venueSlug` | DJ detail page | Listener |
 | `/register` | DJ registration | DJ |
 | `/login` or `/dj` | DJ login | DJ |
 | `/dj/dashboard` | DJ dashboard | DJ |
@@ -218,13 +218,42 @@ helm upgrade --install jukebox ./helm \
 
 ---
 
+## Third-Party Setup
+
+### Spotify (Song Search)
+
+The app uses Spotify Web API (Client Credentials flow) for song search. No user login required — it only reads track metadata.
+
+1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Create an app (any name, e.g. "DropBeat")
+3. Copy the **Client ID** and **Client Secret**
+4. Set them in `apps/backend/.env`:
+   ```bash
+   SPOTIFY_CLIENT_ID=your-client-id
+   SPOTIFY_CLIENT_SECRET=your-client-secret
+   ```
+
+> If not configured, song search will return empty results but the app will still run.
+
+### Apple Pay & Google Pay
+
+The frontend uses Stripe's `<PaymentElement />` which automatically supports Apple Pay and Google Pay — no code changes needed.
+
+**Google Pay:**
+- Go to [Stripe Dashboard](https://dashboard.stripe.com) > Settings > Payment methods
+- Enable **Google Pay**
+
+**Apple Pay:**
+1. Stripe Dashboard > Settings > Payment methods > Apple Pay
+2. Click **Add new domain** and enter your production domain
+3. Download the verification file from Stripe
+4. Place it at `apps/frontend/public/.well-known/apple-developer-merchantid-domain-association`
+
+> Apple Pay requires HTTPS and a verified domain. Google Pay works immediately after enabling.
+
+---
+
 ## Testing
-
-### Test Accounts
-
-| Role | Email | Password |
-|------|-------|----------|
-| DJ | `dj@example.com` | `test1234` |
 
 ### Test Credit Cards (Stripe)
 
