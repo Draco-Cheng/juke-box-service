@@ -21,9 +21,9 @@ const nextConfig = {
   },
 }
 
-// Skip Serwist entirely in dev — its webpack plugin conflicts with Turbopack
+// Skip Serwist in dev (conflicts with Turbopack) or when explicitly disabled
 let finalConfig = nextConfig
-if (!isDev) {
+if (!isDev && !process.env.DISABLE_PWA) {
   const withSerwistInit = (await import('@serwist/next')).default
   const withSerwist = withSerwistInit({
     swSrc: 'src/sw.ts',
