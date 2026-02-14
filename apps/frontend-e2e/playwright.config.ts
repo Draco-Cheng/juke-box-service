@@ -23,6 +23,7 @@ export default defineConfig({
       cwd: '../../',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
+      env: { ...process.env, DISABLE_PWA: '1' },
     },
   ],
   projects: [

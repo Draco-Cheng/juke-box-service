@@ -5,12 +5,6 @@ import { dirname } from 'path'
 // Explicitly load .env from the frontend app directory.
 nextEnv.loadEnvConfig(dirname(fileURLToPath(import.meta.url)))
 
-// next dev sets NODE_ENV *after* loading config, so also check process.argv.
-// When launched via npm/nx, argv may contain the full script path, so use .some().
-const isDev =
-  process.env.NODE_ENV === 'development' ||
-  process.argv.some((a) => a === 'dev' || a.endsWith('/next dev') || a.includes('--turbopack'))
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -25,9 +19,10 @@ const nextConfig = {
   },
 }
 
-// Skip Serwist in dev (conflicts with Turbopack) or when explicitly disabled
+// Serwist's webpack plugin conflicts with Turbopack (next dev --turbopack).
+// Only load it for production builds. Set DISABLE_PWA=1 to skip entirely.
 let finalConfig = nextConfig
-if (!isDev && !process.env.DISABLE_PWA) {
+if (process.env.NODE_ENV === 'production' && !process.env.DISABLE_PWA) {
   const withSerwistInit = (await import('@serwist/next')).default
   const withSerwist = withSerwistInit({
     swSrc: 'src/sw.ts',
