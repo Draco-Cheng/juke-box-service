@@ -5,10 +5,11 @@ import { dirname } from 'path'
 // Explicitly load .env from the frontend app directory.
 nextEnv.loadEnvConfig(dirname(fileURLToPath(import.meta.url)))
 
-// next dev sets NODE_ENV *after* loading config, so also check process.argv
+// next dev sets NODE_ENV *after* loading config, so also check process.argv.
+// When launched via npm/nx, argv may contain the full script path, so use .some().
 const isDev =
   process.env.NODE_ENV === 'development' ||
-  process.argv.includes('dev')
+  process.argv.some((a) => a === 'dev' || a.endsWith('/next dev') || a.includes('--turbopack'))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

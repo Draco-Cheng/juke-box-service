@@ -47,6 +47,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_API_URL: /api
+          DISABLE_PWA: "1"
         run: |
           # Build backend only — frontend runs in dev mode via Playwright webServer
           npx nx build backend
