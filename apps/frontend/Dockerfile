@@ -5,7 +5,6 @@ WORKDIR /app
 
 # Install dependencies first (for better caching)
 COPY package.json ./
-# Copy root lockfile if available (Nx monorepo keeps it at repo root)
 COPY package-lock.json* ./
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
