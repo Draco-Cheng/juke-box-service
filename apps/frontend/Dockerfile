@@ -5,9 +5,9 @@ WORKDIR /app
 
 # Install dependencies first (for better caching)
 COPY package.json ./
-# Copy root lockfile if available (Nx monorepo keeps it at repo root)
-COPY package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Lockfile is copied from monorepo root by CI before docker build
+COPY package-lock.json ./
+RUN npm ci
 
 # Copy the rest of the source code
 COPY . .
