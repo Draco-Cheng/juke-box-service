@@ -5,9 +5,8 @@ WORKDIR /app
 
 # Install dependencies first (for better caching)
 COPY package.json ./
-# Lockfile is copied from monorepo root by CI before docker build
-COPY package-lock.json ./
-RUN npm ci
+COPY package-lock.json* ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy the rest of the source code
 COPY . .
