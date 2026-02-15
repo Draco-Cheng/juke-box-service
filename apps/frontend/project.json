@@ -39,7 +39,7 @@
         "publish": {
             "executor": "nx:run-commands",
             "options": {
-                "command": "cp ../../package-lock.json . 2>/dev/null || true && docker build --target production -t \"$DOCKER_USERNAME/${REPO_NAME}_frontend:$VERSION\" -t \"$DOCKER_USERNAME/${REPO_NAME}_frontend:latest\" . && docker push \"$DOCKER_USERNAME/${REPO_NAME}_frontend:$VERSION\" && docker push \"$DOCKER_USERNAME/${REPO_NAME}_frontend:latest\"; rm -f package-lock.json",
+                "command": "docker build --target production -t \"$DOCKER_USERNAME/${REPO_NAME}_frontend:$VERSION\" -t \"$DOCKER_USERNAME/${REPO_NAME}_frontend:latest\" . && docker push \"$DOCKER_USERNAME/${REPO_NAME}_frontend:$VERSION\" && docker push \"$DOCKER_USERNAME/${REPO_NAME}_frontend:latest\"",
                 "cwd": "apps/frontend"
             }
         },

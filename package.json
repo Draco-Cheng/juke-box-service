@@ -13,11 +13,10 @@
     "@swc-node/register": "~1.9.1",
     "@swc/core": "^1.15.11",
     "@swc/helpers": "~0.5.11",
-    "@types/node": "^20",
+    "@types/node": "^22",
     "nx": "21.4.0",
     "supabase": "^2.23.0",
     "swc-loader": "0.1.15",
-    "tailwindcss": "^4.1.18",
     "tslib": "^2.3.0",
     "typescript": "~5.8.2"
   },
